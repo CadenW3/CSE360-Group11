@@ -905,6 +905,8 @@ public class Database {
 	}
 	
 	
+	
+	
 	// Attribute getters for the current user
 	/*******
 	 * <p> Method: String getCurrentUsername() </p>
@@ -1060,4 +1062,117 @@ public class Database {
 			se.printStackTrace(); 
 		} 
 	}
+	
+
+	//Checks if a username exists in the database.
+		 
+		public boolean usernameExists(String username) {
+			try {
+				String query = "SELECT COUNT(*) as count FROM userDB WHERE userName = ?";
+				PreparedStatement pstmt = connection.prepareStatement(query);
+				pstmt.setString(1, username);
+				ResultSet rs = pstmt.executeQuery();
+				if (rs.next()) {
+					return rs.getInt("count") > 0;
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			return false;
+		}
+
+		/**
+		 * Generates a string report of all users in the system.
+		 */
+		public String getListOfUsers() throws SQLException {
+			String query = "SELECT userName FROM userDB"; 
+			Statement stmt = connection.createStatement();
+			ResultSet rs = stmt.executeQuery(query);
+			
+			StringBuilder userList = new StringBuilder();
+			userList.append("--- Registered Users ---\n");
+			
+			while (rs.next()) {
+				userList.append(rs.getString("userName")).append("\n");
+			}
+			return userList.toString();
+		}
+
+		/**
+		 * Deletes a user from the database.
+		 */
+		public void deleteUser(String username) throws SQLException {
+			String query = "DELETE FROM userDB WHERE userName = ?";
+			PreparedStatement pstmt = connection.prepareStatement(query);
+			pstmt.setString(1, username);
+			pstmt.executeUpdate();
+		}
+
+		//Resets a user's password to a new One-Time Password (OTP).
+		public void resetPassword(String username, String newPassword) throws SQLException {
+			String query = "UPDATE userDB SET password = ? WHERE userName = ?";
+			PreparedStatement pstmt = connection.prepareStatement(query);
+			pstmt.setString(1, newPassword);
+			pstmt.setString(2, username);
+			pstmt.executeUpdate();
+		}
+		
+
+		public void addInvitation(String code) throws SQLException {
+			// We insert just the code. The email and role can be updated later or 
+			// left null if the system logic handles defaults.
+			String query = "INSERT INTO InvitationCodes (code) VALUES (?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, code);
+				pstmt.executeUpdate();
+			}
+		}
+
+		//Wrapper to get the number of invitations (ensures compatibility with Controller).
+		public int getInvitationCount() {
+			return getNumberOfInvitations();
+		}
+
+		// Checks if an invitation code exists in the database.
+		public boolean validInvitation(String code) {
+			String query = "SELECT COUNT(*) FROM InvitationCodes WHERE code = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, code);
+				ResultSet rs = pstmt.executeQuery();
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			return false;
+		}
+		
+		//Generates a string report of all active invitations in the system.
+		public String getInvitationListReport() throws SQLException {
+			String query = "SELECT code, emailAddress FROM InvitationCodes"; 
+			Statement stmt = connection.createStatement();
+			ResultSet rs = stmt.executeQuery(query);
+			
+			StringBuilder report = new StringBuilder();
+			report.append("--- Active Invitations ---\n");
+			report.append(String.format("%-12s | %-25s\n", "Code", "Email Address"));
+			report.append("------------------------------------------\n");
+			
+			while (rs.next()) {
+				report.append(String.format("%-12s | %-25s\n", 
+						rs.getString("code"), 
+						rs.getString("emailAddress")));
+			}
+			return report.toString();
+		}
+
+		//Deletes an invitation from the database using its code.
+		public void deleteInvitation(String code) throws SQLException {
+			String query = "DELETE FROM InvitationCodes WHERE code = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, code);
+				pstmt.executeUpdate();
+			}
+		}
 }

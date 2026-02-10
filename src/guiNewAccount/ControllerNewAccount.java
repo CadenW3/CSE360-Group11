@@ -11,7 +11,7 @@ import entityClasses.User;
  * <p> Description: The Java/FX-based New Account Page. </p>
  * <p> Copyright: Lynn Robert Carter © 2025 </p>
  * @author Lynn Robert Carter
- * @version 1.02 Added Real-time password logic
+ * @version 1.03 Updated Password Logic (Start with Letter)
  */
 public class ControllerNewAccount {
 
@@ -44,9 +44,9 @@ public class ControllerNewAccount {
 			ViewNewAccount.label_PasswordStrength.setText("Too Long (>16 chars)");
 			ViewNewAccount.label_PasswordStrength.setTextFill(Color.RED);
 		}
-		// 3. Length is Good, Check Complexity
+		// 3. Length is Good, Check Complexity (Num, Special, Start with Letter)
 		else if (!result.isEmpty()) {
-			// Length is 12-16, but checkPassword returned an error (missing Num or Special) -> Red
+			// Length is 12-16, but checkPassword returned an error -> Red
 			ViewNewAccount.label_PasswordStrength.setText(result); // Show specific error
 			ViewNewAccount.label_PasswordStrength.setTextFill(Color.RED);
 		}
@@ -148,6 +148,11 @@ public class ControllerNewAccount {
 			return "Password must be at least 12 characters";
 		if (password.length() > 16)
 			return "Password must be less than 16 characters";
+
+		// NEW CHECK: First character must be a letter
+		if (!Character.isLetter(password.charAt(0))) {
+			return "Password must start with a letter (a-z or A-Z).";
+		}
 
 		int numberCount = 0;
 		int specialCount = 0;

@@ -87,16 +87,15 @@ public class ViewNewAccount {
 		
 //		Had to block out code to create new users Cannot figure out invitation Code for now
 		
-//		theRole = theDatabase.getRoleGivenAnInvitationCode(theInvitationCode);
-//		
-//		if (theRole.length() == 0) {
-//			alertInvitationCodeIsInvalid.showAndWait();	
-//			return;					
-//		}
-//		
-//		emailAddress = theDatabase.getEmailAddressUsingCode(theInvitationCode);
-//		
-		theRole = "User";
+		theRole = theDatabase.getRoleGivenAnInvitationCode(theInvitationCode);
+		
+		if (theRole.length() == 0) {
+			alertInvitationCodeIsInvalid.showAndWait();	
+			return;					
+		}
+		
+		emailAddress = theDatabase.getEmailAddressUsingCode(theInvitationCode);
+		
     	theRootPane.getChildren().clear();
     	// Added label_PasswordStrength to the pane
     	theRootPane.getChildren().addAll(label_NewUserCreation, label_NewUserLine, text_Username,

@@ -22,29 +22,22 @@ import guiUserUpdate.ViewUserUpdate;
 
 /*******
  * <p> Title: GUIAdminHomePage Class. </p>
- * 
- * <p> Description: The Java/FX-based Admin Home Page.  This class provides the JavaFX GUI widgets
+ * * <p> Description: The Java/FX-based Admin Home Page.  This class provides the JavaFX GUI widgets
  * that enable an admin to perform admin functions.  This page contains a number of buttons that
  * have not yet been implemented.  What has been implemented may not work the way the final product
  * requires and there maybe defects in this code.
- * 
- * The class has been written using a singleton design pattern and is the View portion of the 
+ * * The class has been written using a singleton design pattern and is the View portion of the 
  * Model, View, Controller pattern.  The pattern is designed that the all accesses to this page and
  * its functions starts by invoking the static method displayAdminHome.  No other method should 
  * attempt to instantiate this class as that is controlled by displayAdminHome.  It ensure that
  * only one instance of class is instantiated and that one is properly configured for each use.  
- * 
- * Please note that this implementation is not appropriate for concurrent systems with multiple
+ * * Please note that this implementation is not appropriate for concurrent systems with multiple
  * users. This Baeldung article provides insight into the issues: 
- *           https://www.baeldung.com/java-singleton</p>
- * 
- * <p> Copyright: Lynn Robert Carter © 2025 </p>
- * 
- * @author Lynn Robert Carter
- * 
- * @version 1.00		2025-08-17 Initial version
- *  
- */
+ * https://www.baeldung.com/java-singleton</p>
+ * * <p> Copyright: Lynn Robert Carter © 2025 </p>
+ * * @author Lynn Robert Carter
+ * * @version 1.00		2025-08-17 Initial version
+ * */
 
 public class ViewAdminHome {
 	
@@ -130,6 +123,7 @@ public class ViewAdminHome {
 
 	private static Scene theAdminHomeScene;		// The shared Scene each invocation populates
 	private static final int theRole = 1;		// Admin: 1; Role1: 2; Role2: 3
+	
 
 	/*-*******************************************************************************************
 
@@ -139,59 +133,49 @@ public class ViewAdminHome {
 
 	/**********
 	 * <p> Method: displayAdminHome(Stage ps, User user) </p>
-	 * 
-	 * <p> Description: This method is the single entry point from outside this package to cause
+	 * * <p> Description: This method is the single entry point from outside this package to cause
 	 * the Admin Home page to be displayed.
-	 * 
-	 * It first sets up every shared attributes so we don't have to pass parameters.
-	 * 
-	 * It then checks to see if the page has been setup.  If not, it instantiates the class, 
+	 * * It first sets up every shared attributes so we don't have to pass parameters.
+	 * * It then checks to see if the page has been setup.  If not, it instantiates the class, 
 	 * initializes all the static aspects of the GIUI widgets (e.g., location on the page, font,
 	 * size, and any methods to be performed).
-	 * 
-	 * After the instantiation, the code then populates the elements that change based on the user
+	 * * After the instantiation, the code then populates the elements that change based on the user
 	 * and the system's current state.  It then sets the Scene onto the stage, and makes it visible
 	 * to the user.
-	 * 
-	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
-	 * 
-	 * @param user specifies the User for this GUI and it's methods
-	 * 
-	 */
+	 * * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
+	 * * @param user specifies the User for this GUI and it's methods
+	 * */
 	public static void displayAdminHome(Stage ps, User user) {
-		
-		// Establish the references to the GUI and the current user
-		theStage = ps;
 		theUser = user;
+		theStage = ps;
 		
-		// If not yet established, populate the static aspects of the GUI
-		if (theView == null) theView = new ViewAdminHome();		// Instantiate singleton if needed
+		if (theView == null) theView = new ViewAdminHome();
 		
-		// Populate the dynamic aspects of the GUI with the data from the user and the current
-		// state of the system.
-		theDatabase.getUserAccountDetails(user.getUserName());		// Fetch this user's data
-		applicationMain.FoundationsMain.activeHomePage = theRole;	// Set this as the active Home																	// UserUpdate page
+		// Update Counters on Load
+		try {
+			// Update User Counter
+			label_NumberOfUsers.setText("Number of users: " + theDatabase.getNumberOfUsers());
+			
+			// Update Invitation Counter (NEW)
+			label_NumberOfInvitations.setText("Number of outstanding invitations: " + theDatabase.getNumberOfInvitations());
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
-		// Set the role for potential users to the default (No role selected)
-		combobox_SelectRole.getSelectionModel().select(0);
-				
-		// Set the title for the window, display the page, and wait for the Admin to do something
-		theStage.setTitle("CSE 360 Foundation Code: Admin Home Page");
-		theStage.setScene(theAdminHomeScene);						// Set this page onto the stage
-		theStage.show();											// Display it to the user
+    	theStage.setTitle("CSE 360 Foundation Code: Admin Home Page");
+        theStage.setScene(theAdminHomeScene);
+		theStage.show();
 	}
 	
 	/**********
 	 * <p> Method: GUIAdminHomePage() </p>
-	 * 
-	 * <p> Description: This method initializes all the elements of the graphical user interface.
+	 * * <p> Description: This method initializes all the elements of the graphical user interface.
 	 * This method determines the location, size, font, color, and change and event handlers for
 	 * each GUI object.
-	 * 
-	 * This is a singleton and is only performed once.  Subsequent uses fill in the changeable
+	 * * This is a singleton and is only performed once.  Subsequent uses fill in the changeable
 	 * fields using the displayAdminHome method.</p>
-	 * 
-	 */
+	 * */
 	private ViewAdminHome() {
 
 		// Create the Pane for the list of widgets and the Scene for the window
@@ -208,17 +192,12 @@ public class ViewAdminHome {
 		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);
 		
 		setupButtonUI(button_UpdateThisUser, "Dialog", 18, 170, Pos.CENTER, 610, 45);
-		button_UpdateThisUser.setOnAction((_) -> 
+		button_UpdateThisUser.setOnAction((event) -> 
 				{ViewUserUpdate.displayUserUpdate(theStage, theUser);});
 			
-		// GUI Area 2
-		setupLabelUI(label_NumberOfInvitations, "Arial", 20, 200, Pos.BASELINE_LEFT, 20, 105);
-		label_NumberOfInvitations.setText("Number of outstanding invitations: " + 
-				theDatabase.getNumberOfInvitations());
-	
-		setupLabelUI(label_NumberOfUsers, "Arial", 20, 200, Pos.BASELINE_LEFT, 20, 135);
-		label_NumberOfUsers.setText("Number of users: " + 
-				theDatabase.getNumberOfUsers());
+		// GUI Area 2 - FIX: Styled label_NumberOfInvitations to match users and removed duplication
+		setupLabelUI(label_NumberOfInvitations, "Arial", 20, 400, Pos.BASELINE_LEFT, 20, 105);
+		setupLabelUI(label_NumberOfUsers, "Arial", 20, 400, Pos.BASELINE_LEFT, 20, 135);
 	
 		// GUI Area 3
 		setupLabelUI(label_Invitations, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 175);
@@ -241,52 +220,52 @@ public class ViewAdminHome {
 		alertEmailSent.setHeaderText("Invitation was sent");
 
 		setupButtonUI(button_SendInvitation, "Dialog", 16, 150, Pos.CENTER, 630, 205);
-		button_SendInvitation.setOnAction((_) -> {ControllerAdminHome.performInvitation(); });
+		button_SendInvitation.setOnAction((event) -> {ControllerAdminHome.performInvitation(); });
 	
 		// GUI Area 4
 		setupButtonUI(button_ManageInvitations, "Dialog", 16, 250, Pos.CENTER, 20, 270);
-		button_ManageInvitations.setOnAction((_) -> 
+		button_ManageInvitations.setOnAction((event) -> 
 			{ControllerAdminHome.manageInvitations(); });
 	
 		setupButtonUI(button_SetOnetimePassword, "Dialog", 16, 250, Pos.CENTER, 20, 320);
-		button_SetOnetimePassword.setOnAction((_) -> 
+		button_SetOnetimePassword.setOnAction((event) -> 
 			{ControllerAdminHome.setOnetimePassword(); });
 
 		setupButtonUI(button_DeleteUser, "Dialog", 16, 250, Pos.CENTER, 20, 370);
-		button_DeleteUser.setOnAction((_) -> {ControllerAdminHome.deleteUser(); });
+		button_DeleteUser.setOnAction((event) -> {ControllerAdminHome.deleteUser(); });
 
 		setupButtonUI(button_ListUsers, "Dialog", 16, 250, Pos.CENTER, 20, 420);
-		button_ListUsers.setOnAction((_) -> {ControllerAdminHome.listUsers(); });
+		button_ListUsers.setOnAction((event) -> {ControllerAdminHome.listUsers(); });
 
 		setupButtonUI(button_AddRemoveRoles, "Dialog", 16, 250, Pos.CENTER, 20, 470);
-		button_AddRemoveRoles.setOnAction((_) -> {ControllerAdminHome.addRemoveRoles(); });
+		button_AddRemoveRoles.setOnAction((event) -> {ControllerAdminHome.addRemoveRoles(); });
 		
 		// GUI Area 5
 		setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
-		button_Logout.setOnAction((_) -> {ControllerAdminHome.performLogout(); });
-    
+		button_Logout.setOnAction((event) -> {ControllerAdminHome.performLogout(); });
+ 
 		setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
-		button_Quit.setOnAction((_) -> {ControllerAdminHome.performQuit(); });
+		button_Quit.setOnAction((event) -> {ControllerAdminHome.performQuit(); });
 
 		// This is the end of the GUI initialization code
 		
 		// Place all of the widget items into the Root Pane's list of children
 		theRootPane.getChildren().addAll(
 			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-    		label_NumberOfInvitations, label_NumberOfUsers,
-    		line_Separator2,
-    		label_Invitations, 
-    		label_InvitationEmailAddress, text_InvitationEmailAddress,
-    		combobox_SelectRole, button_SendInvitation, line_Separator3,
-    		button_ManageInvitations,
-    		button_SetOnetimePassword,
-    		button_DeleteUser,
-    		button_ListUsers,
-    		button_AddRemoveRoles,
-    		line_Separator4, 
-    		button_Logout,
-    		button_Quit
-    		);
+ 		label_NumberOfInvitations, label_NumberOfUsers,
+ 		line_Separator2,
+ 		label_Invitations, 
+ 		label_InvitationEmailAddress, text_InvitationEmailAddress,
+ 		combobox_SelectRole, button_SendInvitation, line_Separator3,
+ 		button_ManageInvitations,
+ 		button_SetOnetimePassword,
+ 		button_DeleteUser,
+ 		button_ListUsers,
+ 		button_AddRemoveRoles,
+ 		line_Separator4, 
+ 		button_Logout,
+ 		button_Quit
+ 		);
 		
 		// With theRootPane set up with the common widgets, it is up to displayAdminHome to show
 		// that Pane to the user after the dynamic elements of the widgets have been updated.
@@ -300,8 +279,7 @@ public class ViewAdminHome {
 
 	/**********
 	 * Private local method to initialize the standard fields for a label
-	 * 
-	 * @param l		The Label object to be initialized
+	 * * @param l		The Label object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
@@ -320,8 +298,7 @@ public class ViewAdminHome {
 	
 	/**********
 	 * Private local method to initialize the standard fields for a button
-	 * 
-	 * @param b		The Button object to be initialized
+	 * * @param b		The Button object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
@@ -340,8 +317,7 @@ public class ViewAdminHome {
 	
 	/**********
 	 * Private local method to initialize the standard fields for a text input field
-	 * 
-	 * @param b		The TextField object to be initialized
+	 * * @param b		The TextField object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
@@ -363,8 +339,7 @@ public class ViewAdminHome {
 	
 	/**********
 	 * Private local method to initialize the standard fields for a ComboBox
-	 * 
-	 * @param c		The ComboBox object to be initialized
+	 * * @param c		The ComboBox object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the ComboBox

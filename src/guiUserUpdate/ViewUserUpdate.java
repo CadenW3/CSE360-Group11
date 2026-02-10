@@ -15,26 +15,21 @@ import entityClasses.User;
 
 /*******
  * <p> Title: ViewUserUpdate Class. </p>
- * 
- * <p> Description: The Java/FX-based User Update Page.  This page enables the user to update the
+ * * <p> Description: The Java/FX-based User Update Page.  This page enables the user to update the
  * attributes about the user held by the system.  Currently, this page does not provide a mechanism
  * to change the Username and not all of the functions on this page are implemented.
- * 
- * Currently the following attributes can be updated:
- * 		- First Name
- * 		- Middle Name
- * 		- Last Name
- * 		- Preferred First Name
- * 		- Email Address
+ * * Currently the following attributes can be updated:
+ * - First Name
+ * - Middle Name
+ * - Last Name
+ * - Preferred First Name
+ * - Email Address
+ * - Password (NEW)
  * The page uses dialog boxes for updating these items.</p>
- * 
- * <p> Copyright: Lynn Robert Carter © 2025 </p>
- * 
- * @author Lynn Robert Carter
- * 
- * @version 1.01		2025-08-19 Initial version plus new internal documentation
- *  
- */
+ * * <p> Copyright: Lynn Robert Carter © 2025 </p>
+ * * @author Lynn Robert Carter
+ * * @version 1.01		2025-08-19 Initial version plus new internal documentation
+ * */
 
 public class ViewUserUpdate {
 
@@ -81,13 +76,14 @@ public class ViewUserUpdate {
 	// These buttons enable the user to edit the various dynamic fields.  The username and the
 	// passwords for a user are currently not editable.
 	private static Button button_UpdateUsername = new Button("Update Username");
-	private static Button button_UpdatePassword = new Button("Update Password");
+	private static Button button_UpdatePassword = new Button("Update Password"); // This is the button we use
 	private static Button button_UpdateFirstName = new Button("Update First Name");
 	private static Button button_UpdateMiddleName = new Button("Update Middle Name");
 	private static Button button_UpdateLastName = new Button("Update Last Name");
 	private static Button button_UpdatePreferredFirstName = new Button("Update Preferred First Name");
 	private static Button button_UpdateEmailAddress = new Button("Update Email Address");
-
+	
+	
 	// This button enables the user to finish working on this page and proceed to the user's home
 	// page determined by the user's role at the time of log in.
 	private static Button button_ProceedToUserHomePage = new Button("Proceed to the User Home Page");
@@ -116,6 +112,7 @@ public class ViewUserUpdate {
 	public static Scene theUserUpdateScene = null;	// The Scene each invocation populates
 
 	private static Optional<String> result;		// The result from a pop-up dialog
+	
 
 	/*-********************************************************************************************
 
@@ -126,23 +123,17 @@ public class ViewUserUpdate {
 
 	/**********
 	 * <p> Method: displayUserUpdate(Stage ps, User user) </p>
-	 * 
-	 * <p> Description: This method is the single entry point from outside this package to cause
+	 * * <p> Description: This method is the single entry point from outside this package to cause
 	 * the UserUpdate page to be displayed.
-	 * 
-	 * It first sets up very shared attributes so we don't have to pass parameters.
-	 * 
-	 * It then checks to see if the page has been setup.  If not, it instantiates the class, 
+	 * * It first sets up very shared attributes so we don't have to pass parameters.
+	 * * It then checks to see if the page has been setup.  If not, it instantiates the class, 
 	 * initializes all the static aspects of the GUI widgets (e.g., location on the page, font,
 	 * size, and any methods to be performed).
-	 * 
-	 * After the instantiation, the code then populates the elements that change based on the user
+	 * * After the instantiation, the code then populates the elements that change based on the user
 	 * and the system's current state.  It then sets the Scene onto the stage, and makes it visible
 	 * to the user.
-	 * 
-	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
-	 * 
-	 * @param user specifies the User whose roles will be updated
+	 * * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
+	 * * @param user specifies the User whose roles will be updated
 	 *
 	 */
 	public static void displayUserUpdate(Stage ps, User user) {
@@ -198,15 +189,12 @@ public class ViewUserUpdate {
 	
 	/**********
 	 * <p> Method: ViewUserUpdate() </p>
-	 * 
-	 * <p> Description: This method initializes all the elements of the graphical user interface.
+	 * * <p> Description: This method initializes all the elements of the graphical user interface.
 	 * This method determines the location, size, font, color, and change and event handlers for
 	 * each GUI object.</p>
-	 * 
-	 * This is a singleton and is only performed once.  Subsequent uses fill in the changeable
+	 * * This is a singleton and is only performed once.  Subsequent uses fill in the changeable
 	 * fields using the displayUserUpdate method.</p>
-	 * 
-	 */
+	 * */
 	
 	private ViewUserUpdate() {
 
@@ -246,15 +234,24 @@ public class ViewUserUpdate {
         // Display the titles, values, and update buttons for the various admin account attributes.
         // If the attributes is null or empty, display "<none>".
         
-        // USername
+        // Username
         setupLabelUI(label_Username, "Arial", 18, 190, Pos.BASELINE_RIGHT, 5, 100);
         setupLabelUI(label_CurrentUsername, "Arial", 18, 260, Pos.BASELINE_LEFT, 200, 100);
         setupButtonUI(button_UpdateUsername, "Dialog", 18, 275, Pos.CENTER, 500, 93);
        
-        // password
+        // Password
         setupLabelUI(label_Password, "Arial", 18, 190, Pos.BASELINE_RIGHT, 5, 150);
         setupLabelUI(label_CurrentPassword, "Arial", 18, 260, Pos.BASELINE_LEFT, 200, 150);
+        
+        // Correctly configured Password Update Button
         setupButtonUI(button_UpdatePassword, "Dialog", 18, 275, Pos.CENTER, 500, 143);
+        button_UpdatePassword.setOnAction((event) -> { 
+        	String newPass = ControllerUserUpdate.performUpdatePassword(theUser);
+        	if (newPass != null) {
+        		theUser.setPassword(newPass);
+        		label_CurrentPassword.setText(newPass);
+        	}
+        });
         
         // First Name
         setupLabelUI(label_FirstName, "Arial", 18, 190, Pos.BASELINE_RIGHT, 5, 200);
@@ -324,8 +321,8 @@ public class ViewUserUpdate {
         	if (newEmail == null || newEmail.length() < 1)label_CurrentEmailAddress.setText("<none>");
         	else label_CurrentEmailAddress.setText(newEmail);
  			});
-        
-        // Set up the button to proceed to this user's home page
+       
+		// Set up the button to proceed to this user's home page
         setupButtonUI(button_ProceedToUserHomePage, "Dialog", 18, 300, 
         		Pos.CENTER, width/2-150, 450);
         button_ProceedToUserHomePage.setOnAction((_) -> 
@@ -333,16 +330,14 @@ public class ViewUserUpdate {
     	
         // Populate the Pane's list of children widgets
         theRootPane.getChildren().addAll(
-        		label_ApplicationTitle, label_Purpose, label_Username,
-        		label_CurrentUsername, 
-        		label_Password, label_CurrentPassword, 
-        		button_UpdatePassword, 
+        		label_ApplicationTitle, label_Purpose, 
+        		label_Username, label_CurrentUsername, // Removed button_UpdateUsername (not editable)
+        		label_Password, label_CurrentPassword, button_UpdatePassword, 
         		label_FirstName, label_CurrentFirstName, button_UpdateFirstName,
         		label_MiddleName, label_CurrentMiddleName, button_UpdateMiddleName,
         		label_LastName, label_CurrentLastName, button_UpdateLastName,
-        		label_PreferredFirstName, label_CurrentPreferredFirstName,
-        		button_UpdatePreferredFirstName, button_UpdateEmailAddress,
-        		label_EmailAddress, label_CurrentEmailAddress, 
+        		label_PreferredFirstName, label_CurrentPreferredFirstName, button_UpdatePreferredFirstName,
+        		label_EmailAddress, label_CurrentEmailAddress, button_UpdateEmailAddress,
         		button_ProceedToUserHomePage);
 	}
 	
@@ -355,8 +350,7 @@ public class ViewUserUpdate {
 	
 	/**********
 	 * Private local method to initialize the standard fields for a label
-	 * 
-	 * @param l		The Label object to be initialized
+	 * * @param l		The Label object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
@@ -375,8 +369,7 @@ public class ViewUserUpdate {
 	
 	/**********
 	 * Private local method to initialize the standard fields for a button
-	 * 
-	 * @param b		The Button object to be initialized
+	 * * @param b		The Button object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
