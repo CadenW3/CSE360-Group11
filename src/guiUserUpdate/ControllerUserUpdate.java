@@ -36,12 +36,26 @@ public class ControllerUserUpdate {
 	 * * @param theStage specifies the JavaFX Stage for next next GUI page and it's methods
 	 * * @param theUser specifies the user so we go to the right page and so the right information
 	 */
-	protected static void goToUserHomePage(Stage theStage, User theUser) {
+protected static void goToUserHomePage(Stage theStage, User theUser) {
 		
-		// Get the roles the user selected during login
-		int theRole = applicationMain.FoundationsMain.activeHomePage;
+		// Determine which page to go to based on the User's roles
+		int theRole;
+		
+		if (theUser.getAdminRole()) {
+			theRole = 1; // Admin Home
+		} else if (theUser.getNewRole1()) {
+			theRole = 2; // Role1 Home
+		} else if (theUser.getNewRole2()) {
+			theRole = 3; // Role2 Home
+		} else {
+			// Fallback to the global state if no role is found
+			theRole = applicationMain.FoundationsMain.activeHomePage;
+		}
 
-		// Use that role to proceed to that role's home page
+		// Update the global active page so the system knows which context the user is in
+		applicationMain.FoundationsMain.activeHomePage = theRole;
+
+		// Navigate to the correct page
 		switch (theRole) {
 		case 1:
 			guiAdminHome.ViewAdminHome.displayAdminHome(theStage, theUser);
@@ -53,8 +67,7 @@ public class ControllerUserUpdate {
 			guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
 			break;
 		default: 
-			System.out.println("*** ERROR *** UserUpdate goToUserHome has an invalid role: " + 
-					theRole);
+			System.out.println("*** ERROR *** UserUpdate has an invalid role.");
 			System.exit(0);
 		}
  	}

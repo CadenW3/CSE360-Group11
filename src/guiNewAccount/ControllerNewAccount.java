@@ -91,7 +91,7 @@ public class ControllerNewAccount {
 			boolean isRole1 = false;
 			boolean isRole2 = false;
 			
-			String role = ViewNewAccount.theRole; // Get the role from the View
+			String role = theDatabase.getRoleGivenAnInvitationCode(ViewNewAccount.theInvitationCode);
 			
 			if ("Admin".equalsIgnoreCase(role)) {
 				isAdmin = true;
@@ -100,8 +100,7 @@ public class ControllerNewAccount {
 			} else if ("Role2".equalsIgnoreCase(role)) {
 				isRole2 = true;
 			} else {
-				// Fallback: If the role is just "User" or unknown, assign Role1 so they can log in
-				isRole1 = true; 
+				isRole1 = true; // Fallback
 			}
 			// fix end
 
@@ -111,15 +110,11 @@ public class ControllerNewAccount {
 			try {
 				theDatabase.register(user);
 			} catch (SQLException e) {
-				System.err.println("*** ERROR *** Database error: " + e.getMessage());
 				e.printStackTrace();
-				System.exit(0);
 			}
 
-			// Remove the invitation from the system
+			// Clean up the invitation code
 			theDatabase.removeInvitationAfterUse(ViewNewAccount.theInvitationCode);
-
-			// Set the database so it has this user and the current user
 			theDatabase.getUserAccountDetails(username);
 
 			// Navigate to the User Update Page

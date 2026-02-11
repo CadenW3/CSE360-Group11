@@ -1065,7 +1065,6 @@ public class Database {
 	
 
 	//Checks if a username exists in the database.
-		 
 		public boolean usernameExists(String username) {
 			try {
 				String query = "SELECT COUNT(*) as count FROM userDB WHERE userName = ?";
@@ -1081,9 +1080,7 @@ public class Database {
 			return false;
 		}
 
-		/**
-		 * Generates a string report of all users in the system.
-		 */
+		//Generates a string report of all users in the system.
 		public String getListOfUsers() throws SQLException {
 			String query = "SELECT userName FROM userDB"; 
 			Statement stmt = connection.createStatement();

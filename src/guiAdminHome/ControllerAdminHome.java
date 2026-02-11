@@ -169,15 +169,22 @@ public class ControllerAdminHome {
 		String email = ViewAdminHome.text_InvitationEmailAddress.getText();
 		if (invalidEmailAddress(email)) return;
 		
-		// Use the Database method to generate the code and insert it
-		// We default to "Role1" if no role selector is available in the UI
-		String inviteCode = theDatabase.generateInvitationCode(email, "Role1");
+		// FIX: Read the role from the ComboBox instead of using a hardcoded string
+		String role = ViewAdminHome.combobox_SelectRole.getValue();
+		
+		// If no role is selected, default to Role1 to prevent errors
+		if (role == null || role.isEmpty()) {
+			role = "Role1";
+		}
+		
+		// Use the Database method to generate the code and insert it with the selected role
+		String inviteCode = theDatabase.generateInvitationCode(email, role);
 		
 		// Update the Invitation Counter on the screen
 		ViewAdminHome.label_NumberOfInvitations.setText("Number of outstanding invitations: " + 
 				theDatabase.getNumberOfInvitations());
 		
-		// Show the code to the Admin
+		// Show the code to the Admin in a popup
 		Alert alert = new Alert(AlertType.INFORMATION);
 		alert.setTitle("Invitation Sent");
 		alert.setHeaderText("Invitation Code Generated");
