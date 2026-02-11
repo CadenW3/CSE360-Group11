@@ -144,15 +144,12 @@ public class ControllerNewAccount {
 	// Helper method to validate password rules
 	// Returns empty string if VALID, error message string if INVALID
 	private static String checkPassword(String password) {
+		//checks for greater than 12 length
 		if (password.length() < 12)
 			return "Password must be at least 12 characters";
+		//checks for less than 16 length
 		if (password.length() > 16)
 			return "Password must be less than 16 characters";
-
-		// NEW CHECK: First character must be a letter
-		if (!Character.isLetter(password.charAt(0))) {
-			return "Password must start with a letter (a-z or A-Z).";
-		}
 
 		int numberCount = 0;
 		int specialCount = 0;
@@ -163,9 +160,10 @@ public class ControllerNewAccount {
 			else if (!Character.isLetterOrDigit(c))
 				specialCount++;
 		}
-
+		//checks for 2 nums
 		if (numberCount < 2)
 			return "Weak Password. Please use at least 2 numbers";
+		//checks for 1 special char
 		if (specialCount < 1)
 			return "Weak Password. Please use at least 1 special character";
 
