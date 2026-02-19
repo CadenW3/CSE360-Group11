@@ -182,7 +182,7 @@ public class ViewUserLogin {
 		combobox_SelectRole.setMinWidth(150);
 		combobox_SelectRole.setLayoutX(170);
 		combobox_SelectRole.setLayoutY(255);
-		combobox_SelectRole.getItems().addAll("<Select a Role>", "Admin", "Role1", "Role2");
+		combobox_SelectRole.getItems().addAll("<Select a Role>", "Admin", "Staff", "Student");
 		combobox_SelectRole.getSelectionModel().select(0);
 
 		theRootPane.getChildren().addAll(

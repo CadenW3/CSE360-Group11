@@ -106,8 +106,8 @@ public class ViewMultipleRoleDispatch {
 		list = new ArrayList<String>();
 		list.add("<Select a role>");
 		if (theDatabase.getCurrentAdminRole()) list.add("Admin");
-		if (theDatabase.getCurrentNewRole1()) list.add("Role1");
-		if (theDatabase.getCurrentNewRole2()) list.add("Role2");
+		if (theDatabase.getCurrentNewRole1()) list.add("Staff");
+		if (theDatabase.getCurrentNewRole2()) list.add("Student");
 		combobox_SelectRole.setItems(FXCollections.observableArrayList(list));
 
 		// Populate the dynamic aspects of the GUI with the data from the user and the current
