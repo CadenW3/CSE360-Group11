@@ -155,6 +155,31 @@ public class Database {
 					+ "receiver VARCHAR(255), "
 					+ "content VARCHAR(2000))";
 			statement.execute(dmTable);
+			
+			// Questions Table
+			String qTable = "CREATE TABLE IF NOT EXISTS Questions ("
+					+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+					+ "title VARCHAR(255), "
+					+ "topic VARCHAR(1000), "
+					+ "createdBy VARCHAR(255))";
+			statement.execute(qTable);
+
+			// Question Replies Table
+			String qrTable = "CREATE TABLE IF NOT EXISTS QuestionReplies ("
+					+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+					+ "questionId INT, "
+					+ "parentReplyId INT, "
+					+ "content VARCHAR(2000), "
+					+ "createdBy VARCHAR(255))";
+			statement.execute(qrTable);
+
+			// Read Receipts Table (Tracks if a user has seen a post)
+			String rpTable = "CREATE TABLE IF NOT EXISTS ReadPosts ("
+					+ "username VARCHAR(255), "
+					+ "postId INT, "
+					+ "postType VARCHAR(50), "
+					+ "PRIMARY KEY(username, postId, postType))";
+			statement.execute(rpTable);
 		
 	}
 
@@ -1361,13 +1386,17 @@ public class Database {
 				// Retrieves all staff members for the dropdown menu
 				public java.util.List<String> getStaffUsers() {
 					java.util.List<String> list = new java.util.ArrayList<>();
-					String query = "SELECT userName FROM userDB WHERE newStaff = TRUE";
+					//The database column is newRole1 
+					String query = "SELECT userName FROM userDB WHERE newRole1 = TRUE";
+					
 					try (java.sql.Statement stmt = connection.createStatement();
 						 java.sql.ResultSet rs = stmt.executeQuery(query)) {
 						while (rs.next()) {
 							list.add(rs.getString("userName"));
 						}
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					} catch (java.sql.SQLException e) { 
+						e.printStackTrace(); 
+					}
 					return list;
 				}
 
@@ -1396,5 +1425,146 @@ public class Database {
 						}
 					} catch (java.sql.SQLException e) { e.printStackTrace(); }
 					return list;
+				}
+				
+				// Clears all existing direct messages from the database
+				public void clearAllMessages() {
+					try (java.sql.Statement stmt = connection.createStatement()) {
+						stmt.execute("DELETE FROM DirectMessages");
+						System.out.println("All messages have been cleared.");
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+				}
+
+				// Retrieves all student members so Staff can message them
+				public java.util.List<String> getStudentUsers() {
+					java.util.List<String> list = new java.util.ArrayList<>();
+					// newRole2 is the database column for Students
+					String query = "SELECT userName FROM userDB WHERE newRole2 = TRUE";
+					try (java.sql.Statement stmt = connection.createStatement();
+						 java.sql.ResultSet rs = stmt.executeQuery(query)) {
+						while (rs.next()) {
+							list.add(rs.getString("userName"));
+						}
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					return list;
+				}
+				
+				// --- QUESTIONS OPERATIONS ---
+				public void createQuestion(String title, String topic, String createdBy) {
+					String query = "INSERT INTO Questions (title, topic, createdBy) VALUES (?, ?, ?)";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, title); pstmt.setString(2, topic); pstmt.setString(3, createdBy);
+						pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+
+				public java.util.List<String> getQuestionList() {
+					java.util.List<String> list = new java.util.ArrayList<>();
+					String query = "SELECT id, title, topic, createdBy FROM Questions";
+					try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
+						while (rs.next()) list.add(rs.getInt("id") + " | " + rs.getString("title") + " | " + rs.getString("topic") + " | " + rs.getString("createdBy"));
+					} catch (SQLException e) { e.printStackTrace(); }
+					return list;
+				}
+
+				public String getQuestion(int id) {
+					String query = "SELECT id, title, topic, createdBy FROM Questions WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id);
+						try (ResultSet rs = pstmt.executeQuery()) {
+							if (rs.next()) return rs.getInt("id") + " | " + rs.getString("title") + " | " + rs.getString("topic") + " | " + rs.getString("createdBy");
+						}
+					} catch (SQLException e) { e.printStackTrace(); }
+					return null;
+				}
+
+				public void createQuestionReply(int questionId, int parentReplyId, String content, String createdBy) {
+					String query = "INSERT INTO QuestionReplies (questionId, parentReplyId, content, createdBy) VALUES (?, ?, ?, ?)";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, questionId); pstmt.setInt(2, parentReplyId); pstmt.setString(3, content); pstmt.setString(4, createdBy);
+						pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+
+				public java.util.List<String> getRepliesForQuestion(int questionId) {
+					java.util.List<String> list = new java.util.ArrayList<>();
+					String query = "SELECT id, parentReplyId, content, createdBy FROM QuestionReplies WHERE questionId = ? ORDER BY id ASC";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, questionId);
+						try (ResultSet rs = pstmt.executeQuery()) {
+							while (rs.next()) list.add(rs.getInt("id") + " | " + rs.getInt("parentReplyId") + " | " + rs.getString("content") + " | " + rs.getString("createdBy"));
+						}
+					} catch (SQLException e) { e.printStackTrace(); }
+					return list;
+				}
+
+				// --- UNREAD POST TRACKING ---
+				public boolean hasReadPost(String username, int postId, String postType) {
+					String query = "SELECT COUNT(*) FROM ReadPosts WHERE username = ? AND postId = ? AND postType = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, username); pstmt.setInt(2, postId); pstmt.setString(3, postType);
+						try (ResultSet rs = pstmt.executeQuery()) {
+							if (rs.next()) return rs.getInt(1) > 0;
+						}
+					} catch (SQLException e) { e.printStackTrace(); }
+					return false;
+				}
+
+				public void markPostAsRead(String username, int postId, String postType) {
+					if (hasReadPost(username, postId, postType)) return; // Already read
+					String query = "INSERT INTO ReadPosts (username, postId, postType) VALUES (?, ?, ?)";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, username); pstmt.setInt(2, postId); pstmt.setString(3, postType);
+						pstmt.executeUpdate();
+					} catch (SQLException e) {}
+				}
+				
+				// Automatically updates the database schema safely
+				public void setupGradingAndTimestamps() {
+					try {
+						statement.execute("ALTER TABLE DiscussionThreads ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+						statement.execute("ALTER TABLE Replies ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+						statement.execute("ALTER TABLE Questions ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+						statement.execute("ALTER TABLE QuestionReplies ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+
+						String gradesTable = "CREATE TABLE IF NOT EXISTS Grades ("
+								+ "replyId INT PRIMARY KEY, "
+								+ "wordScore INT, "
+								+ "qualityScore INT, "
+								+ "timeScore INT)";
+						statement.execute(gradesTable);
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+				}
+
+				public String getTimestampStr(int id, String table) {
+					String query = "SELECT createdAt FROM " + table + " WHERE id = ?";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id);
+						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+							if (rs.next() && rs.getTimestamp(1) != null) {
+								return new java.text.SimpleDateFormat("MMM dd, yyyy h:mm a").format(rs.getTimestamp(1));
+							}
+						}
+					} catch (Exception e) {}
+					return "Just now"; // Default for newly created rows before refresh
+				}
+
+				public void saveGrade(int replyId, int wordScore, int qualityScore, int timeScore) {
+					String query = "MERGE INTO Grades (replyId, wordScore, qualityScore, timeScore) KEY (replyId) VALUES (?, ?, ?, ?)";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, replyId); pstmt.setInt(2, wordScore); pstmt.setInt(3, qualityScore); pstmt.setInt(4, timeScore);
+						pstmt.executeUpdate();
+					} catch (Exception e) { e.printStackTrace(); }
+				}
+
+				public String getGrade(int replyId) {
+					String query = "SELECT wordScore, qualityScore, timeScore FROM Grades WHERE replyId = ?";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, replyId);
+						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+							if (rs.next()) return rs.getInt(1) + "|" + rs.getInt(2) + "|" + rs.getInt(3);
+						}
+					} catch (Exception e) {}
+					return null;
 				}
 		}

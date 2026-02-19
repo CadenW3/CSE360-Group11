@@ -16,18 +16,13 @@ import entityClasses.User;
 
 /*******
  * <p> Title: ViewRole2Home Class. </p>
- * 
- * <p> Description: The Java/FX-based Role2 Home Page.  The page is a stub for some role needed for
+ * * <p> Description: The Java/FX-based Role2 Home Page.  The page is a stub for some role needed for
  * the application.  The widgets on this page are likely the minimum number and kind for other role
  * pages that may be needed.</p>
- * 
- * <p> Copyright: Lynn Robert Carter © 2025 </p>
- * 
- * @author Lynn Robert Carter
- * 
- * @version 1.00		2025-04-20 Initial version
- *  
- */
+ * * <p> Copyright: Lynn Robert Carter © 2025 </p>
+ * * @author Lynn Robert Carter
+ * * @version 1.00		2025-04-20 Initial version
+ * */
 
 public class ViewRole2Home {
 	
@@ -106,25 +101,18 @@ public class ViewRole2Home {
 
 	/**********
 	 * <p> Method: displayRole2Home(Stage ps, User user) </p>
-	 * 
-	 * <p> Description: This method is the single entry point from outside this package to cause
+	 * * <p> Description: This method is the single entry point from outside this package to cause
 	 * the Role2 Home page to be displayed.
-	 * 
-	 * It first sets up every shared attributes so we don't have to pass parameters.
-	 * 
-	 * It then checks to see if the page has been setup.  If not, it instantiates the class, 
+	 * * It first sets up every shared attributes so we don't have to pass parameters.
+	 * * It then checks to see if the page has been setup.  If not, it instantiates the class, 
 	 * initializes all the static aspects of the GIUI widgets (e.g., location on the page, font,
 	 * size, and any methods to be performed).
-	 * 
-	 * After the instantiation, the code then populates the elements that change based on the user
+	 * * After the instantiation, the code then populates the elements that change based on the user
 	 * and the system's current state.  It then sets the Scene onto the stage, and makes it visible
 	 * to the user.
-	 * 
-	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
-	 * 
-	 * @param user specifies the User for this GUI and it's methods
-	 * 
-	 */
+	 * * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
+	 * * @param user specifies the User for this GUI and it's methods
+	 * */
 	public static void displayRole2Home(Stage ps, User user) {
 		
 		// Establish the references to the GUI and the current user
@@ -149,15 +137,12 @@ public class ViewRole2Home {
 	
 	/**********
 	 * <p> Method: ViewRole2Home() </p>
-	 * 
-	 * <p> Description: This method initializes all the elements of the graphical user interface.
+	 * * <p> Description: This method initializes all the elements of the graphical user interface.
 	 * This method determines the location, size, font, color, and change and event handlers for
 	 * each GUI object. </p>
-	 * 
-	 * This is a singleton and is only performed once.  Subsequent uses fill in the changeable
+	 * * This is a singleton and is only performed once.  Subsequent uses fill in the changeable
 	 * fields using the displayRole2Home method.</p>
-	 * 
-	 */
+	 * */
 	private ViewRole2Home() {
 		
 		// Create the Pane for the list of widgets and the Scene for the window
@@ -178,186 +163,131 @@ public class ViewRole2Home {
 		setupButtonUI(button_UpdateThisUser, "Dialog", 18, 170, Pos.CENTER, 610, 45);
 		button_UpdateThisUser.setOnAction((_) -> {ControllerRole2Home.performUpdate(); });
 		
-		// GUI Area 2
-		
 		// --- GUI Area 2: ED DISCUSSION LAYOUT ---
 		
-				// Left Side: File-manager style drop down tree
+		// Left Side: File-manager style drop down tree
 		// Left Side: Discussions Tree
-				tree_Discussions.setLayoutX(20);
-				tree_Discussions.setLayoutY(110);
-				tree_Discussions.setPrefSize(350, 330); // Made slightly shorter to fit dropdown
-				ControllerRole2Home.refreshDiscussionTree(tree_Discussions);
+		tree_Discussions.setLayoutX(20);
+		tree_Discussions.setLayoutY(110);
+		tree_Discussions.setPrefSize(350, 330); 
+		ControllerRole2Home.refreshDiscussionTree(tree_Discussions, theUser.getUserName(), null, null);
 
-				// Left Side: Staff Drop-Down Menu
-				setupLabelUI(label_StaffSelect, "Arial", 16, 150, Pos.BASELINE_LEFT, 20, 455);
+		// Left Side: Staff Drop-Down Menu
+		setupLabelUI(label_StaffSelect, "Arial", 16, 150, Pos.BASELINE_LEFT, 20, 455);
+		
+		dropdown_Staff.setLayoutX(140);
+		dropdown_Staff.setLayoutY(450);
+		dropdown_Staff.setPrefWidth(230);
+		dropdown_Staff.getItems().add("<Select Staff Member>");
+		try {
+			dropdown_Staff.getItems().addAll(theDatabase.getStaffUsers());
+		} catch (Exception e) {}
+		dropdown_Staff.getSelectionModel().select(0);
+
+		// Right Side: Professional Content viewer
+		box_ThreadDetails.setStyle("-fx-background-color: white;");
+		box_ThreadDetails.setPrefWidth(370); 
+		
+		scroll_ThreadDetails.setContent(box_ThreadDetails);
+		scroll_ThreadDetails.setFitToWidth(true); 
+		scroll_ThreadDetails.setLayoutX(390);
+		scroll_ThreadDetails.setLayoutY(110);
+		scroll_ThreadDetails.setPrefSize(390, 200);
+		scroll_ThreadDetails.setStyle("-fx-background-color: white; -fx-border-color: #d1d5db; -fx-background-insets: 0;");
+
+		// Right Side: Reply box
+		input_ReplyBox.setLayoutX(390);
+		input_ReplyBox.setLayoutY(320);
+		input_ReplyBox.setPrefSize(300, 30);
+		input_ReplyBox.setPromptText("Type a reply here...");
+
+		setupButtonUI(button_SubmitReply, "Dialog", 14, 80, Pos.CENTER, 700, 320);
+
+		// Selection Listener 1: Consolidated listener for ANY click in the tree
+		tree_Discussions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+			if (newVal != null) {
+				// FIX: Delay clear to prevent the IndexOutOfBoundsException crash
+				javafx.application.Platform.runLater(() -> {
+					dropdown_Staff.getSelectionModel().select(0); 
+				});
 				
-				dropdown_Staff.setLayoutX(140);
-				dropdown_Staff.setLayoutY(450);
-				dropdown_Staff.setPrefWidth(230);
-				dropdown_Staff.getItems().add("<Select Staff Member>");
-				dropdown_Staff.getItems().addAll(theDatabase.getStaffUsers());
-				dropdown_Staff.getSelectionModel().select(0);
-
-				// Selection Listener 1: When user clicks a Discussion Thread
-				tree_Discussions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-					if (newVal != null) {
-						dropdown_Staff.getSelectionModel().select(0); // Clear Staff selection
-						input_ReplyBox.setPromptText("Type a reply here...");
-						
-						javafx.scene.control.TreeItem<String> current = newVal;
-						while (current != null && !current.getValue().startsWith("[Thread-")) {
-							current = current.getParent();
-						}
-						if (current != null) {
-							int threadId = Integer.parseInt(current.getValue().substring(8, current.getValue().indexOf("]")));
-							ControllerRole2Home.renderThreadView(threadId, box_ThreadDetails);
-						}
-					}
-				});
-
-				// Selection Listener 2: When user selects a Staff member from the Drop-Down
-				dropdown_Staff.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-					if (newVal != null && !newVal.equals("<Select Staff Member>")) {
-						tree_Discussions.getSelectionModel().clearSelection(); // Clear Thread selection
-						input_ReplyBox.setPromptText("Message " + newVal + "...");
-						
-						// Render WhatsApp View
-						ControllerRole2Home.renderDirectMessages(theUser.getUserName(), newVal, box_ThreadDetails);
-					}
-				});
-
-				// Submit Button Logic
-				button_SubmitReply.setOnAction((_) -> {
-					String messageText = input_ReplyBox.getText();
-					if (messageText.isEmpty()) return;
-
-					String selectedStaff = dropdown_Staff.getSelectionModel().getSelectedItem();
-					
-					// 1. Check if we are sending a Direct Message
-					if (selectedStaff != null && !selectedStaff.equals("<Select Staff Member>")) {
-						ControllerRole2Home.executeDirectMessageDB(theUser.getUserName(), selectedStaff, messageText, box_ThreadDetails);
-						input_ReplyBox.clear();
-						return;
-					}
-					
-					// 2. Otherwise, we are replying to a Thread
-					javafx.scene.control.TreeItem<String> selectedThread = tree_Discussions.getSelectionModel().getSelectedItem();
-					if (selectedThread != null) {
-						String val = selectedThread.getValue();
-						int threadId = 0, parentReplyId = 0;
-						
-						javafx.scene.control.TreeItem<String> current = selectedThread;
-						while (current != null && !current.getValue().startsWith("[Thread-")) {
-							current = current.getParent();
-						}
-						if (current != null) threadId = Integer.parseInt(current.getValue().substring(8, current.getValue().indexOf("]")));
-						if (val.startsWith("[Reply-")) parentReplyId = Integer.parseInt(val.substring(7, val.indexOf("]")));
-						
-						if (threadId > 0) {
-							ControllerRole2Home.executeReplyDB(threadId, parentReplyId, messageText, theUser.getUserName(), tree_Discussions, box_ThreadDetails);
-							input_ReplyBox.clear();
-						}
-					}
-				});
-
-				// Right Side: Professional Content viewer
-				box_ThreadDetails.setStyle("-fx-background-color: white;");
-				box_ThreadDetails.setPrefWidth(370); // Slightly smaller than ScrollPane to prevent horizontal scroll
+				String val = newVal.getValue();
 				
-				scroll_ThreadDetails.setContent(box_ThreadDetails);
-				scroll_ThreadDetails.setFitToWidth(true); // Expands VBox to fit the pane
-				scroll_ThreadDetails.setLayoutX(390);
-				scroll_ThreadDetails.setLayoutY(110);
-				scroll_ThreadDetails.setPrefSize(390, 200);
-				scroll_ThreadDetails.setStyle("-fx-background-color: white; -fx-border-color: #d1d5db; -fx-background-insets: 0;");
-
-				// Right Side: Reply box
-				input_ReplyBox.setLayoutX(390);
-				input_ReplyBox.setLayoutY(320);
-				input_ReplyBox.setPrefSize(300, 30);
-				input_ReplyBox.setPromptText("Type a reply here...");
-
-				setupButtonUI(button_SubmitReply, "Dialog", 14, 80, Pos.CENTER, 700, 320);
-
-				// Selection Listener: When they click ANY thread or reply on the left
-				tree_Discussions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-					if (newVal != null) {
-						// 1. Find the ROOT thread ID by walking up the tree structure
-						javafx.scene.control.TreeItem<String> current = newVal;
-						while (current != null && !current.getValue().startsWith("[Thread-")) {
-							current = current.getParent();
-						}
-						
-						// 2. Render that entire thread on the right side
-						if (current != null) {
-							int threadId = Integer.parseInt(current.getValue().substring(8, current.getValue().indexOf("]")));
-							ControllerRole2Home.renderThreadView(threadId, box_ThreadDetails);
-						}
-					}
-				});
-
-				// Selection Listener: Determine if clicking a Thread or a Staff member
-				tree_Discussions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-					if (newVal != null) {
-						String val = newVal.getValue();
-						
-						if (val.startsWith("[Staff] ")) {
-							// Load Direct Messages
-							String staffName = val.substring(8).trim();
-							ControllerRole2Home.renderDirectMessages(theUser.getUserName(), staffName, box_ThreadDetails);
-							input_ReplyBox.setPromptText("Message " + staffName + "...");
-						} else {
-							// Find ROOT thread ID and load Thread
-							input_ReplyBox.setPromptText("Type a reply here...");
-							javafx.scene.control.TreeItem<String> current = newVal;
-							while (current != null && !current.getValue().startsWith("[Thread-")) {
-								current = current.getParent();
-							}
-							if (current != null) {
-								int threadId = Integer.parseInt(current.getValue().substring(8, current.getValue().indexOf("]")));
-								ControllerRole2Home.renderThreadView(threadId, box_ThreadDetails);
-							}
-						}
-					}
-				});
-
-				// Submit Button: Automatically routes to Thread Reply OR Direct Message
-				button_SubmitReply.setOnAction((_) -> {
-					javafx.scene.control.TreeItem<String> selected = tree_Discussions.getSelectionModel().getSelectedItem();
-					if (selected == null || input_ReplyBox.getText().isEmpty()) return;
-					String val = selected.getValue();
-					
-					if (val.startsWith("[Staff] ")) {
-						// Send Direct Message
-						String staffName = val.substring(8).trim();
-						ControllerRole2Home.executeDirectMessageDB(theUser.getUserName(), staffName, input_ReplyBox.getText(), box_ThreadDetails);
-						input_ReplyBox.clear();
-						return;
-					}
-					
-					// Send Thread Reply
-					int threadId = 0;
-					int parentReplyId = 0;
-					
-					javafx.scene.control.TreeItem<String> current = selected;
+				// FIX: Visually clear (UNREAD) without rebuilding the tree and crashing
+				if (val.contains("(UNREAD) ")) {
+					newVal.setValue(val.replace("(UNREAD) ", ""));
+				}
+				
+				if (val.startsWith("[Staff] ")) {
+					// Load Direct Messages
+					String staffName = val.substring(8).trim();
+					ControllerRole2Home.renderDirectMessages(theUser.getUserName(), staffName, box_ThreadDetails);
+					input_ReplyBox.setPromptText("Message " + staffName + "...");
+				} else {
+					// Find ROOT thread ID and load Thread
+					input_ReplyBox.setPromptText("Type a reply here...");
+					javafx.scene.control.TreeItem<String> current = newVal;
 					while (current != null && !current.getValue().startsWith("[Thread-")) {
 						current = current.getParent();
 					}
 					if (current != null) {
-						threadId = Integer.parseInt(current.getValue().substring(8, current.getValue().indexOf("]")));
+						int threadId = Integer.parseInt(current.getValue().substring(8, current.getValue().indexOf("]")));
+						ControllerRole2Home.renderPostView(threadId, "Discussion", box_ThreadDetails);
 					}
+				}
+			}
+		});
 
-					if (val.startsWith("[Reply-")) {
-						parentReplyId = Integer.parseInt(val.substring(7, val.indexOf("]")));
-					}
-					
-					if (threadId > 0) {
-						// We pass box_ThreadDetails so the feed updates instantly!
-						ControllerRole2Home.executeReplyDB(threadId, parentReplyId, input_ReplyBox.getText(), theUser.getUserName(), tree_Discussions, box_ThreadDetails);
-						input_ReplyBox.clear();
-					}
+		// Selection Listener 2: Dropdown for Staff Messaging
+		dropdown_Staff.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+			if (newVal != null && !newVal.equals("<Select Staff Member>")) {
+				// FIX: Delay clear to prevent the IndexOutOfBoundsException crash
+				javafx.application.Platform.runLater(() -> {
+					tree_Discussions.getSelectionModel().clearSelection(); 
 				});
+				
+				input_ReplyBox.setPromptText("Message " + newVal + "...");
+				ControllerRole2Home.renderDirectMessages(theUser.getUserName(), newVal, box_ThreadDetails);
+			}
+		});
+
+		// Submit Button Logic (Consolidated single event)
+		button_SubmitReply.setOnAction((_) -> {
+			String messageText = input_ReplyBox.getText();
+			if (messageText.isEmpty()) return;
+
+			String selectedStaff = dropdown_Staff.getSelectionModel().getSelectedItem();
+			
+			// 1. Check if we are sending a Direct Message
+			if (selectedStaff != null && !selectedStaff.equals("<Select Staff Member>")) {
+				ControllerRole2Home.executeDirectMessageDB(theUser.getUserName(), selectedStaff, messageText, box_ThreadDetails);
+				input_ReplyBox.clear();
+				return;
+			}
+			
+			// 2. Otherwise, we are replying to a Thread
+			javafx.scene.control.TreeItem<String> selectedThread = tree_Discussions.getSelectionModel().getSelectedItem();
+			if (selectedThread != null) {
+				String val = selectedThread.getValue();
+				int threadId = 0, parentReplyId = 0;
+				
+				javafx.scene.control.TreeItem<String> current = selectedThread;
+				while (current != null && !current.getValue().startsWith("[Thread-")) {
+					current = current.getParent();
+				}
+				if (current != null) {
+					threadId = Integer.parseInt(current.getValue().substring(8, current.getValue().indexOf("]")));
+				}
+				
+				if (val.startsWith("[Reply-")) parentReplyId = Integer.parseInt(val.substring(7, val.indexOf("]")));
+				else if (val.startsWith("[Post-")) parentReplyId = Integer.parseInt(val.substring(6, val.indexOf("]")));
+				
+				if (threadId > 0) {
+					ControllerRole2Home.executeReplyDB(threadId, parentReplyId, "Discussion", input_ReplyBox.getText(), theUser.getUserName(), tree_Discussions, box_ThreadDetails, null, null);;
+					input_ReplyBox.clear();
+				}
+			}
+		});
 		
 		
 		// GUI Area 3
@@ -370,6 +300,7 @@ public class ViewRole2Home {
 		// This is the end of the GUI initialization code
 		
 		// Place all of the widget items into the Root Pane's list of children
+		theRootPane.getChildren().clear(); // Prevent duplicate rendering 
         theRootPane.getChildren().addAll(
     			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
     			tree_Discussions, label_StaffSelect, dropdown_Staff, 
@@ -386,8 +317,7 @@ public class ViewRole2Home {
 	
 	/**********
 	 * Private local method to initialize the standard fields for a label
-	 * 
-	 * @param l		The Label object to be initialized
+	 * * @param l		The Label object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
@@ -407,8 +337,7 @@ public class ViewRole2Home {
 	
 	/**********
 	 * Private local method to initialize the standard fields for a button
-	 * 
-	 * @param b		The Button object to be initialized
+	 * * @param b		The Button object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
