@@ -115,14 +115,8 @@ public class Database {
 				+ "emailAddress VARCHAR(255), "
 				+ "adminRole BOOL DEFAULT FALSE, "
 				+ "newRole1 BOOL DEFAULT FALSE, "
-				+ "newRole2 BOOL DEFAULT FALSE, "
-				+ "otpExpiry TIMESTAMP DEFAULT NULL)"; //Added OTP Expiry column
+				+ "newRole2 BOOL DEFAULT FALSE)";
 		statement.execute(userTable);
-		
-		try {
-			//Ensure the new column is added even if the table was created previously
-			statement.execute("ALTER TABLE userDB ADD COLUMN IF NOT EXISTS otpExpiry TIMESTAMP DEFAULT NULL");
-		} catch (SQLException e) { }
 		
 		// Create the invitation codes table
 	    String invitationCodesTable = "CREATE TABLE IF NOT EXISTS InvitationCodes ("
@@ -262,14 +256,15 @@ public class Database {
  * 
  */
 	public boolean loginAdmin(User user){
-		// Validates an admin user's login credentials. Expiry check removed from SQL to fix timezone bugs.
-		String query = "SELECT * FROM userDB WHERE UPPER(userName) = UPPER(?) AND password = ? AND adminRole = TRUE";
+		// Validates an admin user's login credentials so the user can login in as an Admin.
+		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
+				+ "adminRole = TRUE";
 		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-			pstmt.setString(1, user.getUserName().trim());
-			pstmt.setString(2, user.getPassword().trim());
+			pstmt.setString(1, user.getUserName());
+			pstmt.setString(2, user.getPassword());
 			ResultSet rs = pstmt.executeQuery();
-			return rs.next();
-		} catch (SQLException e) {
+			return rs.next();	// If a row is returned, rs.next() will return true		
+		} catch  (SQLException e) {
 	        e.printStackTrace();
 	    }
 		return false;
@@ -288,14 +283,15 @@ public class Database {
  * 
  */
 	public boolean loginRole1(User user) {
-		// Validates a student user's login credentials. Expiry check removed from SQL to fix timezone bugs.
-		String query = "SELECT * FROM userDB WHERE UPPER(userName) = UPPER(?) AND password = ? AND newRole1 = TRUE";
+		// Validates a student user's login credentials.
+		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
+				+ "newRole1 = TRUE";
 		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-			pstmt.setString(1, user.getUserName().trim());
-			pstmt.setString(2, user.getPassword().trim());
+			pstmt.setString(1, user.getUserName());
+			pstmt.setString(2, user.getPassword());
 			ResultSet rs = pstmt.executeQuery();
 			return rs.next();
-		} catch (SQLException e) {
+		} catch  (SQLException e) {
 		       e.printStackTrace();
 		}
 		return false;
@@ -312,15 +308,16 @@ public class Database {
 	 * @return true if the specified user has been logged in as an Student else false.
 	 * 
 	 */
+	// Validates a reviewer user's login credentials.
 	public boolean loginRole2(User user) {
-		// Validates a reviewer user's login credentials. Expiry check removed from SQL to fix timezone bugs.
-		String query = "SELECT * FROM userDB WHERE UPPER(userName) = UPPER(?) AND password = ? AND newRole2 = TRUE";
+		String query = "SELECT * FROM userDB WHERE userName = ? AND password = ? AND "
+				+ "newRole2 = TRUE";
 		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-			pstmt.setString(1, user.getUserName().trim());
-			pstmt.setString(2, user.getPassword().trim());
+			pstmt.setString(1, user.getUserName());
+			pstmt.setString(2, user.getPassword());
 			ResultSet rs = pstmt.executeQuery();
 			return rs.next();
-		} catch (SQLException e) {
+		} catch  (SQLException e) {
 		       e.printStackTrace();
 		}
 		return false;
@@ -819,27 +816,27 @@ public class Database {
 	 *  
 	 */
 	// get the attributes for a specified user
-		public boolean getUserAccountDetails(String username) {
-			String query = "SELECT * FROM userDB WHERE UPPER(username) = UPPER(?)";
-			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-				pstmt.setString(1, username.trim());
-		        ResultSet rs = pstmt.executeQuery();			
-				if (!rs.next()) return false; // FIX: Prevent crash if user doesn't exist
-		    	currentUsername = rs.getString(2);
-		    	currentPassword = rs.getString(3);
-		    	currentFirstName = rs.getString(4);
-		    	currentMiddleName = rs.getString(5);
-		    	currentLastName = rs.getString(6);
-		    	currentPreferredFirstName = rs.getString(7);
-		    	currentEmailAddress = rs.getString(8);
-		    	currentAdminRole = rs.getBoolean(9);
-		    	currentNewRole1 = rs.getBoolean(10);
-		    	currentNewRole2 = rs.getBoolean(11);
-				return true;
-		    } catch (SQLException e) {
-				return false;
-		    }
-		}
+	public boolean getUserAccountDetails(String username) {
+		String query = "SELECT * FROM userDB WHERE username = ?";
+		try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+			pstmt.setString(1, username);
+	        ResultSet rs = pstmt.executeQuery();			
+			rs.next();
+	    	currentUsername = rs.getString(2);
+	    	currentPassword = rs.getString(3);
+	    	currentFirstName = rs.getString(4);
+	    	currentMiddleName = rs.getString(5);
+	    	currentLastName = rs.getString(6);
+	    	currentPreferredFirstName = rs.getString(7);
+	    	currentEmailAddress = rs.getString(8);
+	    	currentAdminRole = rs.getBoolean(9);
+	    	currentNewRole1 = rs.getBoolean(10);
+	    	currentNewRole2 = rs.getBoolean(11);
+			return true;
+	    } catch (SQLException e) {
+			return false;
+	    }
+	}
 	
 	
 	/*******
@@ -858,42 +855,54 @@ public class Database {
 	 *  
 	 */
 	// Update a users role
-		// Update a users role
-		public boolean updateUserRole(String username, String role, String value) {
-			if (role.equalsIgnoreCase("Admin")) {
-				String query = "UPDATE userDB SET adminRole = ? WHERE username = ?";
-				try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-					pstmt.setString(1, value);
-					pstmt.setString(2, username);
-					pstmt.executeUpdate();
-					currentAdminRole = value.equalsIgnoreCase("true");
-					return true;
-				} catch (SQLException e) { return false; }
+	public boolean updateUserRole(String username, String role, String value) {
+		if (role.compareTo("Admin") == 0) {
+			String query = "UPDATE userDB SET adminRole = ? WHERE username = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, value);
+				pstmt.setString(2, username);
+				pstmt.executeUpdate();
+				if (value.compareTo("true") == 0)
+					currentAdminRole = true;
+				else
+					currentAdminRole = false;
+				return true;
+			} catch (SQLException e) {
+				return false;
 			}
-			// CHANGED: Check for "Staff" instead of "Role1"
-			if (role.equalsIgnoreCase("Staff")) {
-				String query = "UPDATE userDB SET newRole1 = ? WHERE username = ?";
-				try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-					pstmt.setString(1, value);
-					pstmt.setString(2, username);
-					pstmt.executeUpdate();
-					currentNewRole1 = value.equalsIgnoreCase("true");
-					return true;
-				} catch (SQLException e) { return false; }
-			}
-			// CHANGED: Check for "Student" instead of "Role2"
-			if (role.equalsIgnoreCase("Student")) {
-				String query = "UPDATE userDB SET newRole2 = ? WHERE username = ?";
-				try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-					pstmt.setString(1, value);
-					pstmt.setString(2, username);
-					pstmt.executeUpdate();
-					currentNewRole2 = value.equalsIgnoreCase("true");
-					return true;
-				} catch (SQLException e) { return false; }
-			}
-			return false;
 		}
+		if (role.compareTo("Role1") == 0) {
+			String query = "UPDATE userDB SET newRole1 = ? WHERE username = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, value);
+				pstmt.setString(2, username);
+				pstmt.executeUpdate();
+				if (value.compareTo("true") == 0)
+					currentNewRole1 = true;
+				else
+					currentNewRole1 = false;
+				return true;
+			} catch (SQLException e) {
+				return false;
+			}
+		}
+		if (role.compareTo("Role2") == 0) {
+			String query = "UPDATE userDB SET newRole2 = ? WHERE username = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, value);
+				pstmt.setString(2, username);
+				pstmt.executeUpdate();
+				if (value.compareTo("true") == 0)
+					currentNewRole2 = true;
+				else
+					currentNewRole2 = false;
+				return true;
+			} catch (SQLException e) {
+				return false;
+			}
+		}
+		return false;
+	}
 	
 	
 	
@@ -1071,30 +1080,17 @@ public class Database {
 			return false;
 		}
 
+		//Generates a string report of all users in the system.
 		public String getListOfUsers() throws SQLException {
-			String query = "SELECT userName, emailAddress, adminRole, newRole1, newRole2 FROM userDB"; 
+			String query = "SELECT userName FROM userDB"; 
 			Statement stmt = connection.createStatement();
 			ResultSet rs = stmt.executeQuery(query);
 			
 			StringBuilder userList = new StringBuilder();
-			userList.append(String.format("%-15s | %-25s | %s\n", "Username", "Email Address", "Roles"));
-			userList.append("----------------------------------------------------------------------\n");
+			userList.append("--- Registered Users ---\n");
 			
 			while (rs.next()) {
-				String uname = rs.getString("userName");
-				String email = rs.getString("emailAddress");
-				if (email == null || email.isEmpty()) email = "None";
-				
-				StringBuilder roles = new StringBuilder();
-				if (rs.getBoolean("adminRole")) roles.append("Admin ");
-				// CHANGED: Display "Staff" instead of Role1
-				if (rs.getBoolean("newRole1")) roles.append("Staff ");
-				// CHANGED: Display "Student" instead of Role2
-				if (rs.getBoolean("newRole2")) roles.append("Student ");
-				
-				if (roles.length() == 0) roles.append("None");
-				
-				userList.append(String.format("%-15s | %-25s | %s\n", uname, email, roles.toString().trim()));
+				userList.append(rs.getString("userName")).append("\n");
 			}
 			return userList.toString();
 		}
@@ -1109,138 +1105,71 @@ public class Database {
 			pstmt.executeUpdate();
 		}
 
-		// Resets a user's password to a new One-Time Password (OTP).
-				public void resetPassword(String username, String newPassword) throws SQLException {
-					// Safely add a BIGINT column to bypass all timezone/timestamp bugs in H2 SQL
-					try {
-						connection.createStatement().execute("ALTER TABLE userDB ADD COLUMN IF NOT EXISTS otpExpiryMs BIGINT DEFAULT 0");
-					} catch (Exception ignore) {}
-					
-					// UPPER() ensures case-insensitivity so "admin" and "Admin" don't mismatch
-					String query = "UPDATE userDB SET password = ?, otpExpiryMs = ? WHERE UPPER(userName) = UPPER(?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, newPassword.trim());
-						// Store exactly 24 hours from right now in pure milliseconds
-						pstmt.setLong(2, System.currentTimeMillis() + 86400000L);
-						pstmt.setString(3, username.trim());
-						
-						int rowsAffected = pstmt.executeUpdate();
-						if (rowsAffected == 0) {
-							throw new SQLException("Update failed: Could not find user.");
-						}
-					}
-				}
-
-				public void addInvitation(String code) throws SQLException {
-					String query = "INSERT INTO InvitationCodes (code) VALUES (?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, code);
-						pstmt.executeUpdate();
-					}
-				}
-
-				public int getInvitationCount() {
-					return getNumberOfInvitations();
-				}
-
-				public boolean validInvitation(String code) {
-					String query = "SELECT COUNT(*) FROM InvitationCodes WHERE code = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, code);
-						ResultSet rs = pstmt.executeQuery();
-						if (rs.next()) {
-							return rs.getInt(1) > 0;
-						}
-					} catch (SQLException e) {
-						e.printStackTrace();
-					}
-					return false;
-				}
-				
-				// Fetches the active invitations as a formatted list for the UI
-				public java.util.List<String> getInvitationList() {
-					java.util.List<String> list = new java.util.ArrayList<>();
-					String query = "SELECT code, emailAddress, role FROM InvitationCodes"; 
-					try (Statement stmt = connection.createStatement();
-					     ResultSet rs = stmt.executeQuery(query)) {
-						while (rs.next()) {
-							String code = rs.getString("code");
-							String email = rs.getString("emailAddress");
-							String role = rs.getString("role");
-							if (email == null || email.isEmpty()) email = "None";
-							if (role == null || role.isEmpty()) role = "None";
-							
-							list.add(String.format("%-8s | %-25s | %s", code, email, role));
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return list;
-				}
-
-				public void deleteInvitation(String code) throws SQLException {
-					String query = "DELETE FROM InvitationCodes WHERE code = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, code);
-						pstmt.executeUpdate();
-					}
-				}
-
-				// Checks if an OTP has expired (Pure Java LONG math to completely avoid SQL timezone bugs)
-				public boolean isAccountExpired(String username) {
-					// Catch cases where the column might not exist yet
-					try {
-						connection.createStatement().execute("ALTER TABLE userDB ADD COLUMN IF NOT EXISTS otpExpiryMs BIGINT DEFAULT 0");
-					} catch (Exception ignore) {}
-
-					String query = "SELECT otpExpiryMs FROM userDB WHERE UPPER(userName) = UPPER(?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username.trim());
-						ResultSet rs = pstmt.executeQuery();
-						if (rs.next()) {
-							long expiry = rs.getLong("otpExpiryMs");
-							// If expiry is set (greater than 0) and the current time has passed it
-							if (expiry > 0 && System.currentTimeMillis() > expiry) {
-								return true;
-							}
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return false; // Not expired
-				}
-
-				// Burns the OTP immediately after successful login so it can NEVER be used again
-				public void burnOTP(String username) {
-					// Sets the expiration to 1 (which translates to the year 1970) to instantly expire it
-					String query = "UPDATE userDB SET otpExpiryMs = 1 WHERE UPPER(userName) = UPPER(?) AND otpExpiryMs > 0";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username.trim());
-						pstmt.executeUpdate();
-					} catch (SQLException e) { 
-						e.printStackTrace();
-					}
-				}
-				
-				// Checks if the user is currently logging in with an active OTP
-				public boolean isUsingOTP(String username) {
-					String query = "SELECT otpExpiryMs FROM userDB WHERE UPPER(userName) = UPPER(?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username.trim());
-						ResultSet rs = pstmt.executeQuery();
-						if (rs.next()) {
-							long expiry = rs.getLong("otpExpiryMs");
-							return (expiry > System.currentTimeMillis());
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return false;
-				}
-
-				// Updates the user's password and clears the OTP flag so it becomes a standard password again
-				public void updatePassword(String username, String newPassword) {
-					String query = "UPDATE userDB SET password = ?, otpExpiryMs = 0 WHERE UPPER(userName) = UPPER(?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, newPassword.trim());
-						pstmt.setString(2, username.trim());
-						pstmt.executeUpdate();
-					} catch (SQLException e) {
-						e.printStackTrace();
-					}
-				}
+		//Resets a user's password to a new One-Time Password (OTP).
+		public void resetPassword(String username, String newPassword) throws SQLException {
+			String query = "UPDATE userDB SET password = ? WHERE userName = ?";
+			PreparedStatement pstmt = connection.prepareStatement(query);
+			pstmt.setString(1, newPassword);
+			pstmt.setString(2, username);
+			pstmt.executeUpdate();
 		}
+		
+
+		public void addInvitation(String code) throws SQLException {
+			// We insert just the code. The email and role can be updated later or 
+			// left null if the system logic handles defaults.
+			String query = "INSERT INTO InvitationCodes (code) VALUES (?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, code);
+				pstmt.executeUpdate();
+			}
+		}
+
+		//Wrapper to get the number of invitations (ensures compatibility with Controller).
+		public int getInvitationCount() {
+			return getNumberOfInvitations();
+		}
+
+		// Checks if an invitation code exists in the database.
+		public boolean validInvitation(String code) {
+			String query = "SELECT COUNT(*) FROM InvitationCodes WHERE code = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, code);
+				ResultSet rs = pstmt.executeQuery();
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			return false;
+		}
+		
+		//Generates a string report of all active invitations in the system.
+		public String getInvitationListReport() throws SQLException {
+			String query = "SELECT code, emailAddress FROM InvitationCodes"; 
+			Statement stmt = connection.createStatement();
+			ResultSet rs = stmt.executeQuery(query);
+			
+			StringBuilder report = new StringBuilder();
+			report.append("--- Active Invitations ---\n");
+			report.append(String.format("%-12s | %-25s\n", "Code", "Email Address"));
+			report.append("------------------------------------------\n");
+			
+			while (rs.next()) {
+				report.append(String.format("%-12s | %-25s\n", 
+						rs.getString("code"), 
+						rs.getString("emailAddress")));
+			}
+			return report.toString();
+		}
+
+		//Deletes an invitation from the database using its code.
+		public void deleteInvitation(String code) throws SQLException {
+			String query = "DELETE FROM InvitationCodes WHERE code = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, code);
+				pstmt.executeUpdate();
+			}
+		}
+}

@@ -27,109 +27,40 @@ public class ControllerAdminHome {
 	}
 
 	// ----------------------------------------------------------------------
-		// ONE-TIME PASSWORD FEATURE
-		// ----------------------------------------------------------------------
-		protected static void setOnetimePassword() {
-			// Create a custom dialog window
-			javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
-			dialog.setTitle("One-Time Password");
-			dialog.setHeaderText("Select a User to Generate OTP");
+	// ONE-TIME PASSWORD FEATURE
+	// ----------------------------------------------------------------------
+	protected static void setOnetimePassword() {
+		TextInputDialog dialog = new TextInputDialog();
+		dialog.setTitle("One-Time Password");
+		dialog.setHeaderText("Generate OTP for User");
+		dialog.setContentText("Enter the Username:");
 
-			// Set the button types (Generate and Cancel)
-			javafx.scene.control.ButtonType generateButtonType = new javafx.scene.control.ButtonType("Generate OTP", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
-			dialog.getDialogPane().getButtonTypes().addAll(generateButtonType, javafx.scene.control.ButtonType.CANCEL);
+		Optional<String> result = dialog.showAndWait();
+		
+		if (result.isPresent()) {
+			String targetUser = result.get();
+			if (targetUser.isEmpty()) return;
 
-			// Create a ListView to hold and display the users
-			javafx.scene.control.ListView<String> listView = new javafx.scene.control.ListView<>();
+			// Generate 12-char password to meet requirements (Start with letter)
+			String otp = generateRandomPassword(12);
 			
-			// Fetch the user list and filter out the placeholder
-			java.util.List<String> rawUsers = theDatabase.getUserList();
-			java.util.List<String> displayUsers = new java.util.ArrayList<>();
-			if (rawUsers != null) {
-				for (String u : rawUsers) {
-					if (!u.equals("<Select a User>")) {
-						displayUsers.add(u);
-					}
+			try {
+				if (!theDatabase.usernameExists(targetUser)) {
+					showAlert("Error", "User not found: " + targetUser);
+					return;
 				}
-			}
-			
-			listView.setItems(javafx.collections.FXCollections.observableArrayList(displayUsers));
-			
-			// Set the layout size
-			javafx.scene.layout.VBox selectionVbox = new javafx.scene.layout.VBox(10, listView);
-			selectionVbox.setPrefWidth(300);
-			selectionVbox.setPrefHeight(250);
-			dialog.getDialogPane().setContent(selectionVbox);
-
-			// Disable the Generate button initially so it cannot be clicked until a user is selected
-			javafx.scene.Node generateButton = dialog.getDialogPane().lookupButton(generateButtonType);
-			generateButton.setDisable(true);
-
-			listView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-				generateButton.setDisable(newValue == null);
-			});
-
-			dialog.setResultConverter(dialogButton -> {
-				if (dialogButton == generateButtonType) {
-					return listView.getSelectionModel().getSelectedItem();
-				}
-				return null;
-			});
-
-			Optional<String> result = dialog.showAndWait();
-			
-			if (result.isPresent()) {
-				String targetUser = result.get();
 				
-				// Generate 12-char password to meet requirements (Start with letter)
-				String otp = generateRandomPassword(12);
+				theDatabase.resetPassword(targetUser, otp);
 				
-				try {
-					// Actually save the newly generated OTP to the database!
-					// Without this line, the system never overwrites the old password.
-					theDatabase.resetPassword(targetUser, otp);
-					
-					Alert alert = new Alert(AlertType.INFORMATION);
-					alert.setTitle("OTP Generated Successfully");
-					alert.setHeaderText("One-Time Password set for " + targetUser);
-					
-					// CHANGED: Use a dedicated TextField just for the password so it copies perfectly without hidden spaces
-					javafx.scene.control.TextField passwordField = new javafx.scene.control.TextField(otp);
-					passwordField.setEditable(false);
-					passwordField.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-font-family: 'Arial';");
-					
-					javafx.scene.control.Label topLabel = new javafx.scene.control.Label("Please share this with the user. They can use it to login immediately.\n\nNew Password:");
-					javafx.scene.control.Label timerLabel = new javafx.scene.control.Label("\nTime Remaining: 24 Hours : 00 Minutes\n(Updates automatically every minute)");
-					
-					// Stack them vertically
-					javafx.scene.layout.VBox vbox = new javafx.scene.layout.VBox(5, topLabel, passwordField, timerLabel);
-					
-					long expiryTimeMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000);
-					
-					javafx.animation.Timeline timeline = new javafx.animation.Timeline(
-						new javafx.animation.KeyFrame(javafx.util.Duration.minutes(1), e -> {
-							long millisLeft = expiryTimeMillis - System.currentTimeMillis();
-							if (millisLeft <= 0) {
-								timerLabel.setText("\nStatus: EXPIRED");
-							} else {
-								long hours = java.util.concurrent.TimeUnit.MILLISECONDS.toHours(millisLeft);
-								long minutes = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes(millisLeft) % 60;
-								timerLabel.setText(String.format("\nTime Remaining: %02d Hours : %02d Minutes\n(Updates automatically every minute)", hours, minutes));
-							}
-						})
-					);
-					timeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
-					timeline.play();
-					
-					alert.getDialogPane().setContent(vbox);
-					alert.setOnHidden(e -> timeline.stop());
-					alert.showAndWait();
-					
-				} catch (Exception e) {
-					showAlert("Database Error", e.getMessage());
-				}
+				showAlert("Success", "One-Time Password set for " + targetUser + ".\n\n" +
+						"New Password: " + otp + "\n\n" +
+						"Please share this with the user. They can use it to login immediately.");
+				
+			} catch (SQLException e) {
+				showAlert("Database Error", e.getMessage());
 			}
 		}
+	}
 	
 	private static String generateRandomPassword(int length) {
 		if (length < 12) length = 12; 
@@ -175,130 +106,76 @@ public class ControllerAdminHome {
 	// ----------------------------------------------------------------------
 	// DELETE USER FEATURE
 	// ----------------------------------------------------------------------
-		protected static void deleteUser() {
-			// Create a custom dialog window
-			javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
-			dialog.setTitle("Delete User");
-			dialog.setHeaderText("Select a User to Delete");
+	protected static void deleteUser() {
+		TextInputDialog dialog = new TextInputDialog();
+		dialog.setTitle("Delete User");
+		dialog.setHeaderText("WARNING: Delete User Account");
+		dialog.setContentText("Enter the Username to DELETE:");
 
-			// Set the button types (Delete and Cancel)
-			javafx.scene.control.ButtonType deleteButtonType = new javafx.scene.control.ButtonType("Delete", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
-			dialog.getDialogPane().getButtonTypes().addAll(deleteButtonType, javafx.scene.control.ButtonType.CANCEL);
-
-			// Create a ListView to hold and display the users
-			javafx.scene.control.ListView<String> listView = new javafx.scene.control.ListView<>();
+		Optional<String> result = dialog.showAndWait();
+		
+		if (result.isPresent()) {
+			String targetUser = result.get();
+			if (targetUser.isEmpty()) return;
 			
-			// Fetch the user list and filter out the "<Select a User>" placeholder AND the currently logged-in Admin
-			java.util.List<String> rawUsers = theDatabase.getUserList();
-			java.util.List<String> displayUsers = new java.util.ArrayList<>();
-			if (rawUsers != null) {
-				for (String u : rawUsers) {
-					if (!u.equals("<Select a User>") && !u.equalsIgnoreCase(ViewAdminHome.theUser.getUserName())) {
-						displayUsers.add(u);
-					}
-				}
+			if (targetUser.equals(ViewAdminHome.theUser.getUserName())) {
+				showAlert("Error", "You cannot delete your own admin account while logged in.");
+				return;
 			}
-			
-			listView.setItems(javafx.collections.FXCollections.observableArrayList(displayUsers));
-			
-			// Set the layout size
-			javafx.scene.layout.VBox vbox = new javafx.scene.layout.VBox(10, listView);
-			vbox.setPrefWidth(300);
-			vbox.setPrefHeight(250);
-			dialog.getDialogPane().setContent(vbox);
 
-			// Disable the Delete button initially so it cannot be clicked until a user is selected
-			javafx.scene.Node deleteButton = dialog.getDialogPane().lookupButton(deleteButtonType);
-			deleteButton.setDisable(true);
-
-			// Add a listener: Enable the Delete button ONLY when a user is clicked/selected
-			listView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-				deleteButton.setDisable(newValue == null);
-			});
-
-			// Return the selected username when the Delete button is clicked
-			dialog.setResultConverter(dialogButton -> {
-				if (dialogButton == deleteButtonType) {
-					return listView.getSelectionModel().getSelectedItem();
-				}
-				return null;
-			});
-
-			// Show the dialog and capture the result
-			Optional<String> result = dialog.showAndWait();
-			
-			if (result.isPresent()) {
-				String targetUser = result.get();
-				
-				// Show the "Are you sure?" confirmation popup
-				Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
-				confirmAlert.setTitle("Confirm Deletion");
-				confirmAlert.setHeaderText("Are you sure?");
-				confirmAlert.setContentText("Are you sure you want to permanently delete user '" + targetUser + "'?");
-				
-				// Custom Yes / No buttons
-				javafx.scene.control.ButtonType btnYes = new javafx.scene.control.ButtonType("Yes", javafx.scene.control.ButtonBar.ButtonData.YES);
-				javafx.scene.control.ButtonType btnNo = new javafx.scene.control.ButtonType("No", javafx.scene.control.ButtonBar.ButtonData.NO);
-				confirmAlert.getButtonTypes().setAll(btnYes, btnNo);
-				
-				Optional<javafx.scene.control.ButtonType> confirmResult = confirmAlert.showAndWait();
-				
-				// Only delete if they explicitly clicked "Yes"
-				if (confirmResult.isPresent() && confirmResult.get() == btnYes) {
-					try {
-						theDatabase.deleteUser(targetUser);
-						
-						// Update the counter label immediately
-						ViewAdminHome.label_NumberOfUsers.setText("Number of users: " + 
-								theDatabase.getNumberOfUsers());
-						
-						showAlert("Success", "User '" + targetUser + "' has been deleted.");
-						
-					} catch (SQLException e) {
-						showAlert("Database Error", e.getMessage());
-					}
-				}
-			}
-		}
-
-		// ----------------------------------------------------------------------
-		// LIST USERS FEATURE
-		// ----------------------------------------------------------------------
-		protected static void listUsers() {
 			try {
-				String report = theDatabase.getListOfUsers();
+				if (!theDatabase.usernameExists(targetUser)) {
+					showAlert("Error", "User not found.");
+					return;
+				}
 				
-				Alert alert = new Alert(AlertType.INFORMATION);
-				alert.setTitle("System User List");
-				alert.setHeaderText("Registered Users");
+				theDatabase.deleteUser(targetUser);
 				
-				// Use a TextArea to ensure the content is fully copyable and formatted cleanly
-				javafx.scene.control.TextArea textArea = new javafx.scene.control.TextArea(report);
-				textArea.setEditable(false);
-				textArea.setWrapText(false);
-				textArea.setStyle("-fx-font-family: 'Monospaced'; -fx-font-size: 13px;"); // Monospace aligns columns perfectly
-				textArea.setPrefWidth(550);
-				textArea.setPrefHeight(300);
+				// Update the counter label immediately
+				ViewAdminHome.label_NumberOfUsers.setText("Number of users: " + 
+						theDatabase.getNumberOfUsers());
 				
-				alert.getDialogPane().setContent(textArea);
-				alert.showAndWait();
+				showAlert("Success", "User '" + targetUser + "' has been deleted.");
 				
 			} catch (SQLException e) {
 				showAlert("Database Error", e.getMessage());
 			}
 		}
-	
+	}
 
-		protected static void performInvitation() {
-			String email = ViewAdminHome.text_InvitationEmailAddress.getText();
-			if (invalidEmailAddress(email)) return;
+	// ----------------------------------------------------------------------
+	// LIST USERS FEATURE
+	// ----------------------------------------------------------------------
+	protected static void listUsers() {
+		try {
+			String report = theDatabase.getListOfUsers();
 			
-			String role = ViewAdminHome.combobox_SelectRole.getValue();
+			Alert alert = new Alert(AlertType.INFORMATION);
+			alert.setTitle("System User List");
+			alert.setHeaderText("Registered Users");
+			alert.setContentText(report);
+			alert.getDialogPane().setMinWidth(400);
+			alert.showAndWait();
 			
-			// CHANGED: Default to "Staff" if no role is selected
-			if (role == null || role.isEmpty()) {
-				role = "Staff";
-			}
+		} catch (SQLException e) {
+			showAlert("Database Error", e.getMessage());
+		}
+	}
+	
+	// ----------------------------------------------------------------------
+	// OTHER REQUIRED METHODS
+	// ----------------------------------------------------------------------
+	protected static void performInvitation() {
+		String email = ViewAdminHome.text_InvitationEmailAddress.getText();
+		if (invalidEmailAddress(email)) return;
+		
+		// FIX: Read the role from the ComboBox instead of using a hardcoded string
+		String role = ViewAdminHome.combobox_SelectRole.getValue();
+		
+		// If no role is selected, default to Role1 to prevent errors
+		if (role == null || role.isEmpty()) {
+			role = "Role1";
+		}
 		
 		// Use the Database method to generate the code and insert it with the selected role
 		String inviteCode = theDatabase.generateInvitationCode(email, role);
@@ -318,87 +195,40 @@ public class ControllerAdminHome {
 	}
 	
 	protected static void manageInvitations() {
-		javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
-		dialog.setTitle("Manage Invitations");
-		dialog.setHeaderText("Select an Invitation to Delete");
+		try {
+			// 1. Show the list of invitations (similar to listUsers)
+			String report = theDatabase.getInvitationListReport();
+			
+			Alert listAlert = new Alert(AlertType.INFORMATION);
+			listAlert.setTitle("Manage Invitations");
+			listAlert.setHeaderText("Active Invitation Codes");
+			listAlert.setContentText(report);
+			listAlert.getDialogPane().setMinWidth(450);
+			listAlert.showAndWait();
+			
+			// 2. Allow deletion of an invitation
+			TextInputDialog deleteDialog = new TextInputDialog();
+			deleteDialog.setTitle("Delete Invitation");
+			deleteDialog.setHeaderText("Remove Invitation from System");
+			deleteDialog.setContentText("Enter the Invitation Code to DELETE (or leave blank to cancel):");
 
-		javafx.scene.control.ButtonType deleteButtonType = new javafx.scene.control.ButtonType("Delete", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
-		dialog.getDialogPane().getButtonTypes().addAll(deleteButtonType, javafx.scene.control.ButtonType.CANCEL);
+			Optional<String> result = deleteDialog.showAndWait();
+			
+			if (result.isPresent()) {
+				String targetCode = result.get().trim();
+				if (targetCode.isEmpty()) return;
 
-		// Use a ListView to make them clickable/selectable
-		javafx.scene.control.ListView<String> listView = new javafx.scene.control.ListView<>();
-		
-		java.util.List<String> invList = theDatabase.getInvitationList();
-		listView.setItems(javafx.collections.FXCollections.observableArrayList(invList));
-		listView.setStyle("-fx-font-family: 'Monospaced'; -fx-font-size: 13px;");
-
-		// Header formatted with monospaced font to match the list data spacing exactly
-		javafx.scene.control.Label listHeader = new javafx.scene.control.Label(String.format("%-10s | %-30s | %s", "Code", "Email Address", "Role"));
-		listHeader.setStyle("-fx-font-family: 'Monospaced'; -fx-font-size: 13px; -fx-font-weight: bold;");
-
-		// Custom Key Event listener so Ctrl+C / Cmd+C automatically isolates and copies just the 6-character code
-		listView.setOnKeyPressed(event -> {
-			if (new javafx.scene.input.KeyCodeCombination(javafx.scene.input.KeyCode.C, javafx.scene.input.KeyCombination.SHORTCUT_DOWN).match(event)) {
-				String selection = listView.getSelectionModel().getSelectedItem();
-				if (selection != null) {
-					String targetCode = selection.split("\\|")[0].trim();
-					javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
-					content.putString(targetCode);
-					javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
-				}
+				theDatabase.deleteInvitation(targetCode);
+				
+				// 3. Update the counter label in ViewAdminHome
+				ViewAdminHome.label_NumberOfInvitations.setText("Number of outstanding invitations: " + 
+						theDatabase.getNumberOfInvitations());
+				
+				showAlert("Success", "Invitation '" + targetCode + "' has been deleted.");
 			}
-		});
-		
-		// Use the styled listHeader in the VBox to ensure perfect alignment with the listView
-		javafx.scene.layout.VBox vbox = new javafx.scene.layout.VBox(5, listHeader, listView);
-		vbox.setPrefWidth(550);
-		vbox.setPrefHeight(250);
-		dialog.getDialogPane().setContent(vbox);
-
-		// Disable Delete button until an item is clicked
-		javafx.scene.Node deleteButton = dialog.getDialogPane().lookupButton(deleteButtonType);
-		deleteButton.setDisable(true);
-
-		listView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-			deleteButton.setDisable(newValue == null);
-		});
-
-		dialog.setResultConverter(dialogButton -> {
-			if (dialogButton == deleteButtonType) {
-				return listView.getSelectionModel().getSelectedItem();
-			}
-			return null;
-		});
-
-		Optional<String> result = dialog.showAndWait();
-		
-		if (result.isPresent()) {
-			// Extract just the code (the first 6 characters) from the formatted string
-			String selection = result.get();
-			String targetCode = selection.split("\\|")[0].trim();
 			
-			// Show the "Are you sure?" confirmation popup
-			Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
-			confirmAlert.setTitle("Confirm Deletion");
-			confirmAlert.setHeaderText("Are you sure?");
-			confirmAlert.setContentText("Are you sure you want to delete invitation code '" + targetCode + "'?");
-			
-			javafx.scene.control.ButtonType btnYes = new javafx.scene.control.ButtonType("Yes", javafx.scene.control.ButtonBar.ButtonData.YES);
-			javafx.scene.control.ButtonType btnNo = new javafx.scene.control.ButtonType("No", javafx.scene.control.ButtonBar.ButtonData.NO);
-			confirmAlert.getButtonTypes().setAll(btnYes, btnNo);
-			
-			Optional<javafx.scene.control.ButtonType> confirmResult = confirmAlert.showAndWait();
-			
-			if (confirmResult.isPresent() && confirmResult.get() == btnYes) {
-				try {
-					theDatabase.deleteInvitation(targetCode);
-					ViewAdminHome.label_NumberOfInvitations.setText("Number of outstanding invitations: " + 
-							theDatabase.getNumberOfInvitations());
-					showAlert("Success", "Invitation '" + targetCode + "' has been deleted.");
-				} catch (SQLException e) {
-					showAlert("Database Error", e.getMessage());
-				}
-			}
+		} catch (SQLException e) {
+			showAlert("Database Error", e.getMessage());
 		}
 	}
 	
@@ -408,24 +238,12 @@ public class ControllerAdminHome {
 	}
 	
 	protected static boolean invalidEmailAddress(String emailAddress) {
-		// First check if it is completely empty
-		if (emailAddress == null || emailAddress.trim().isEmpty()) {
-			ViewAdminHome.alertEmailError.setHeaderText("Email Required");
-			ViewAdminHome.alertEmailError.setContentText("Email address cannot be empty. Please correct and try again.");
+		if (emailAddress.length() == 0) {
+			ViewAdminHome.alertEmailError.setContentText("Correct the email address and try again.");
 			ViewAdminHome.alertEmailError.showAndWait();
 			return true;
 		}
-		
-		// requires at least one character, an '@', at least one character, a '.', and at least one character
-		String emailRegex = "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$";
-		if (!emailAddress.matches(emailRegex)) {
-			ViewAdminHome.alertEmailError.setHeaderText("Invalid Email Format");
-			ViewAdminHome.alertEmailError.setContentText("Please enter a valid email address (e.g., example@email.com).");
-			ViewAdminHome.alertEmailError.showAndWait();
-			return true;
-		}
-		
-		return false; // Email is valid
+		return false;
 	}
 	
 	protected static void performLogout() {
