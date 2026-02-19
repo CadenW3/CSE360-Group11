@@ -63,8 +63,9 @@ public class ControllerUserLogin {
 	 */
 	protected static void doLogin(Stage ts) {
 		theStage = ts;
-		String username = ViewUserLogin.text_Username.getText();
-		String password = ViewUserLogin.text_Password.getText();
+		// Added .trim() to ensure invisible spaces from copy-pasting the OTP are completely ignored
+		String username = ViewUserLogin.text_Username.getText().trim();
+		String password = ViewUserLogin.text_Password.getText().trim();
     	boolean loginResult = false;
     	
     	// Validate the username format before checking the database.
@@ -98,51 +99,80 @@ public class ControllerUserLogin {
     		ViewUserLogin.alertUsernamePasswordError.showAndWait();
     		return;
     	}
-		
-		// Establish this user's details
-    	User user = new User(username, password, theDatabase.getCurrentFirstName(), 
-    			theDatabase.getCurrentMiddleName(), theDatabase.getCurrentLastName(), 
-    			theDatabase.getCurrentPreferredFirstName(), theDatabase.getCurrentEmailAddress(), 
-    			theDatabase.getCurrentAdminRole(), 
-    			theDatabase.getCurrentNewRole1(), theDatabase.getCurrentNewRole2());
-    	
-    	// Force Admin to go directly to Admin Home (Bypassing Role Selection if needed)
-    	if (user.getAdminRole()) {
-			loginResult = theDatabase.loginAdmin(user);
-			if (loginResult) {
-				guiAdminHome.ViewAdminHome.displayAdminHome(theStage, user);
-				return;
-			}
+
+    	// Check if the account's OTP is expired or has already been used
+    	if (theDatabase.isAccountExpired(username)) {
+    		ViewUserLogin.alertUsernamePasswordError.setContentText(
+    				"Your One-Time Password has expired or already been used.\nPlease request a new one.");
+    		ViewUserLogin.alertUsernamePasswordError.showAndWait();
+    		return;
     	}
-    	
-    	// See which home page dispatch to use for non-admin or multi-role logic
-		int numberOfRoles = theDatabase.getNumberOfRoles(user);		
-		
-		if (numberOfRoles == 1) {
-			// Single Account Home Page
-			if (user.getNewRole1()) {
-				loginResult = theDatabase.loginRole1(user);
-				if (loginResult) {
-					guiRole1.ViewRole1Home.displayRole1Home(theStage, user);
-				}
-			} else if (user.getNewRole2()) {
-				loginResult = theDatabase.loginRole2(user);
-				if (loginResult) {
-					guiRole2.ViewRole2Home.displayRole2Home(theStage, user);
-				}
-			} else {
-				System.out.println("***** UserLogin request has an invalid role");
-			}
-		} else if (numberOfRoles > 1) {
-			// Multiple Account Home Page
-			guiMultipleRoleDispatch.ViewMultipleRoleDispatch.
-				displayMultipleRoleDispatch(theStage, user);
-		} else {
-			// Handle case where user exists but has 0 roles assigned
-			ViewUserLogin.alertUsernamePasswordError.setContentText("No valid roles assigned to this user.");
-			ViewUserLogin.alertUsernamePasswordError.showAndWait();
-		}
-	}
+
+    	// FORCE PASSWORD RESET FOR OTP USERS:
+    	if (theDatabase.isUsingOTP(username)) {
+    		boolean resetSuccess = forcePasswordReset(username);
+    		if (resetSuccess) {
+    			// They successfully entered a new password. The DB is updated.
+    			// Burn the OTP just to be doubly safe.
+    			theDatabase.burnOTP(username);
+    			
+    			// Alert them to log back in
+    			ViewUserLogin.alertUsernamePasswordError.setTitle("Password Reset Successful");
+    			ViewUserLogin.alertUsernamePasswordError.setHeaderText("Success");
+    			ViewUserLogin.alertUsernamePasswordError.setContentText("Your password has been updated.\nPlease log in again with your new password.");
+    			ViewUserLogin.alertUsernamePasswordError.showAndWait();
+    			
+    			// Clear the login fields so they have to type the new password
+    			ViewUserLogin.text_Username.setText("");
+    			ViewUserLogin.text_Password.setText("");
+    		}
+    		return; // Halt the login process. They must log in again with the newly created password!
+    	}
+
+    	// BURN THE OTP: If the password was correct, immediately expire it if it was an OTP.
+    	theDatabase.burnOTP(username);
+    	// Establish this user's details
+    	User user = new User(username, password, theDatabase.getCurrentFirstName(), 
+    	        theDatabase.getCurrentMiddleName(), theDatabase.getCurrentLastName(), 
+    	        theDatabase.getCurrentPreferredFirstName(), theDatabase.getCurrentEmailAddress(), 
+    	        theDatabase.getCurrentAdminRole(), 
+    	        theDatabase.getCurrentNewRole1(), theDatabase.getCurrentNewRole2());
+
+    	// --- REPLACE EVERYTHING AFTER THIS POINT IN THE METHOD WITH THE FOLLOWING ---
+
+    	// Get the role selected by the user from the UI
+    	// See which home page dispatch to use based on the number of roles
+    		int numberOfRoles = theDatabase.getNumberOfRoles(user);		
+    			
+    		if (numberOfRoles == 1) {
+    			// Single Account Home Page - route directly to their specific page
+    			if (user.getAdminRole()) {
+    				if (theDatabase.loginAdmin(user)) {
+    					guiAdminHome.ViewAdminHome.displayAdminHome(theStage, user);
+   					}
+   				} else if (user.getNewRole1()) {
+   					if (theDatabase.loginRole1(user)) {
+   						guiRole1.ViewRole1Home.displayRole1Home(theStage, user);
+    				}
+    			} else if (user.getNewRole2()) {
+    				if (theDatabase.loginRole2(user)) {
+   						guiRole2.ViewRole2Home.displayRole2Home(theStage, user);
+   					}
+   				} else {
+   					System.out.println("***** UserLogin goToUserHome request has an invalid role");
+    				}
+    			} else if (numberOfRoles > 1) {
+    				// Multiple Account Home Page - The user chooses which role to play AFTER logging in
+    				guiMultipleRoleDispatch.ViewMultipleRoleDispatch.
+    				displayMultipleRoleDispatch(theStage, user);
+   			} else {
+   				// This catches users who have 0 roles
+   				ViewUserLogin.alertUsernamePasswordError.setTitle("Login Error");
+   				ViewUserLogin.alertUsernamePasswordError.setHeaderText("No Roles Assigned");
+    			ViewUserLogin.alertUsernamePasswordError.setContentText("This account exists but has no valid roles assigned.\nPlease contact an Admin.");
+    			ViewUserLogin.alertUsernamePasswordError.showAndWait();
+   			}
+   		}
 	
 		
 	/**********
@@ -163,5 +193,100 @@ public class ControllerUserLogin {
 	 * */
 	protected static void performQuit() {
 		System.exit(0);
+	}
+	
+	private static boolean forcePasswordReset(String username) {
+		javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
+		dialog.setTitle("Forced Password Reset");
+		dialog.setHeaderText("You must reset your password to continue.");
+		
+		javafx.scene.control.ButtonType updateBtnType = new javafx.scene.control.ButtonType("Update Password", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+		dialog.getDialogPane().getButtonTypes().addAll(updateBtnType, javafx.scene.control.ButtonType.CANCEL);
+		
+		javafx.scene.control.PasswordField pwd1 = new javafx.scene.control.PasswordField();
+		pwd1.setPromptText("New Password");
+		javafx.scene.control.PasswordField pwd2 = new javafx.scene.control.PasswordField();
+		pwd2.setPromptText("Confirm New Password");
+		
+		// Add real-time password strength label
+		javafx.scene.control.Label strengthLabel = new javafx.scene.control.Label();
+		
+		// Real-time listener for the password field
+		pwd1.textProperty().addListener((observable, oldValue, newValue) -> {
+			if (newValue.isEmpty()) {
+				strengthLabel.setText("");
+				return;
+			}
+			String result = checkPassword(newValue);
+			if (newValue.length() < 12) {
+				strengthLabel.setText("Too Short (<12 chars)");
+				strengthLabel.setTextFill(javafx.scene.paint.Color.ORANGE);
+			} else if (newValue.length() > 16) {
+				strengthLabel.setText("Too Long (>16 chars)");
+				strengthLabel.setTextFill(javafx.scene.paint.Color.RED);
+			} else if (!result.isEmpty()) {
+				strengthLabel.setText(result);
+				strengthLabel.setTextFill(javafx.scene.paint.Color.RED);
+			} else {
+				strengthLabel.setText("Password Strength: Strong");
+				strengthLabel.setTextFill(javafx.scene.paint.Color.GREEN);
+			}
+		});
+		
+		javafx.scene.layout.VBox vbox = new javafx.scene.layout.VBox(10, 
+				new javafx.scene.control.Label("Enter new password:"), pwd1, strengthLabel, 
+				new javafx.scene.control.Label("Confirm new password:"), pwd2);
+		dialog.getDialogPane().setContent(vbox);
+		
+		// Ensure the passwords follow the rules and match before allowing them to update
+		final javafx.scene.Node updateBtn = dialog.getDialogPane().lookupButton(updateBtnType);
+		updateBtn.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+			String pass1 = pwd1.getText();
+			String pass2 = pwd2.getText();
+			String error = checkPassword(pass1);
+			
+			if (!error.isEmpty()) {
+				javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, error);
+				alert.showAndWait();
+				event.consume(); // Prevent dialog from closing
+			} else if (!pass1.equals(pass2)) {
+				javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, "Passwords do not match!");
+				alert.showAndWait();
+				event.consume(); // Prevent dialog from closing
+			}
+		});
+		
+		dialog.setResultConverter(dialogButton -> {
+			if (dialogButton == updateBtnType) {
+				return pwd1.getText();
+			}
+			return null;
+		});
+		
+		java.util.Optional<String> result = dialog.showAndWait();
+		if (result.isPresent()) {
+			theDatabase.updatePassword(username, result.get());
+			return true;
+		}
+		return false; // User hit cancel
+	}
+
+	// Helper method to validate password rules (same as New Account rules)
+	private static String checkPassword(String password) {
+		if (password.length() < 12) return "Password must be at least 12 characters";
+		if (password.length() > 16) return "Password must be less than 16 characters";
+
+		int numberCount = 0;
+		int specialCount = 0;
+
+		for (char c : password.toCharArray()) {
+			if (Character.isDigit(c)) numberCount++;
+			else if (!Character.isLetterOrDigit(c)) specialCount++;
+		}
+		
+		if (numberCount < 2) return "Weak Password. Please use at least 2 numbers";
+		if (specialCount < 1) return "Weak Password. Please use at least 1 special character";
+
+		return "";
 	}
 }

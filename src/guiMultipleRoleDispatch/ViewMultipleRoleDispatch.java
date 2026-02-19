@@ -101,11 +101,6 @@ public class ViewMultipleRoleDispatch {
 		List<String> list = new ArrayList<String>();	// Create a new list empty list
 		theDatabase.getUserAccountDetails(theUser.getUserName());
 		
-		label_UserDetails.setText("User: " + theUser.getUserName() + "   Select which role");
-		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.CENTER, 0, 50);
-
-		label_UserDetails.setText("User: " + theUser.getUserName());
-		setupLabelUI(label_UserDetails, "Arial", 20, width, Pos.BASELINE_LEFT, 20, 55);			
 
 		System.out.println("*** Getting multiple role details for user: " + theUser.getUserName());
 		list = new ArrayList<String>();
@@ -146,43 +141,40 @@ public class ViewMultipleRoleDispatch {
 		// Populate the window with the title and other common widgets and set their static state
 		
 		// GUI Area 1
-		setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 5);
+		// GUI Area 1
+			setupLabelUI(label_PageTitle, "Arial", 28, width, Pos.CENTER, 0, 80); // CHANGED: Centered Y position
 
-		// GUI Area 2
-		setupLabelUI(label_WhichRole, "Arial", 20, 200, Pos.BASELINE_LEFT, 20, 110);
+			// GUI Area 2
+			setupLabelUI(label_WhichRole, "Arial", 20, width, Pos.CENTER, 0, 200); // CHANGED: Centered layout
 
-		setupComboBoxUI(combobox_SelectRole, "Dialog", 16, 100, 305, 105);
+				setupComboBoxUI(combobox_SelectRole, "Dialog", 16, 150, (width / 2) - 165, 250); // CHANGED: Centered layout
 
-		setupButtonUI(button_PerformRole, "Dialog", 16, 100, Pos.CENTER, 495, 105);
-		button_PerformRole.setOnAction((_) -> 
-		{guiMultipleRoleDispatch.ControllerMultipleRoleDispatch.performRole(); });
+			setupButtonUI(button_PerformRole, "Dialog", 16, 150, Pos.CENTER, (width / 2) + 15, 250); // CHANGED: Centered layout
+			button_PerformRole.setOnAction((_) -> 
+			{guiMultipleRoleDispatch.ControllerMultipleRoleDispatch.performRole(); });
 
-		
-		// GUI Area 3		
-		setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
-		button_Logout.setOnAction((_) -> 
-		{guiMultipleRoleDispatch.ControllerMultipleRoleDispatch.performLogout(); });
+				
+			// GUI Area 3		
+			setupButtonUI(button_Logout, "Dialog", 18, 200, Pos.CENTER, (width / 2) - 220, 400); // CHANGED: Centered layout
+			button_Logout.setOnAction((_) -> 
+			{guiMultipleRoleDispatch.ControllerMultipleRoleDispatch.performLogout(); });
 
-		setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
-		button_Quit.setOnAction((_) -> 
-		{guiMultipleRoleDispatch.ControllerMultipleRoleDispatch.performQuit(); });
-		
-		// This is the end of the GUI Widgets for the page
+			setupButtonUI(button_Quit, "Dialog", 18, 200, Pos.CENTER, (width / 2) + 20, 400); // CHANGED: Centered layout
+			button_Quit.setOnAction((_) -> 
+			{guiMultipleRoleDispatch.ControllerMultipleRoleDispatch.performQuit(); });
+				
+			// This is the end of the GUI Widgets for the page
 
-		// Place all of the just-initialized GUI elements into the pane
-		theRootPane.getChildren().addAll(
-				label_PageTitle,
-				label_UserDetails,
-				line_Separator1,
-				label_WhichRole,
-				combobox_SelectRole,
-				button_PerformRole,
-				line_Separator4, 
-				button_Logout,
-				button_Quit);
+			// Place all of the just-initialized GUI elements into the pane
+			theRootPane.getChildren().addAll(
+					label_PageTitle,
+					label_WhichRole,
+					combobox_SelectRole,
+					button_PerformRole,
+					button_Logout,
+					button_Quit);
+
 	}
-
-
 	/*-********************************************************************************************
 
 		Helper methods to reduce code length

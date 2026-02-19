@@ -244,6 +244,18 @@ public class ControllerAddRemoveRoles {
 		// If the selection is the list header (e.g., "<Select a role>") don't do anything
 		if (ViewAddRemoveRoles.theRemoveRole.compareTo("<Select a role>") != 0) {
 			
+			// CHANGED: Prevent the Admin from removing their own Admin privileges
+			if (ViewAddRemoveRoles.theSelectedUser.trim().equalsIgnoreCase(ViewAddRemoveRoles.theUser.getUserName().trim()) 
+					&& ViewAddRemoveRoles.theRemoveRole.equals("Admin")) {
+				
+				javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+				alert.setTitle("Action Denied");
+				alert.setHeaderText("Cannot Remove Privileges");
+				alert.setContentText("You cannot remove your own Admin privileges while logged in.");
+				alert.showAndWait();
+				return; // Stop the removal process entirely
+			}
+			
 			// If an actual role was selected, update the database entry for that user for the role
 			if (theDatabase.updateUserRole(ViewAddRemoveRoles.theSelectedUser, 
 					ViewAddRemoveRoles.theRemoveRole, "false") ) {

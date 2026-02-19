@@ -66,7 +66,9 @@ public class ViewUserLogin {
 
 
 	private static ViewUserLogin theView = null;	//	private static guiUserLogin.ControllerUserLogin theController;
-
+	
+	protected static Label label_SelectRole = new Label("Select Role:");
+	protected static javafx.scene.control.ComboBox<String> combobox_SelectRole = new javafx.scene.control.ComboBox<>();
 
 	/*-********************************************************************************************
 
@@ -87,7 +89,8 @@ public class ViewUserLogin {
 		text_Username.setText("");		// Reset the username and password from the last use
 		text_Password.setText("");
 		text_Invitation.setText("");	// Same for the invitation code
-
+		combobox_SelectRole.getSelectionModel().select(0);
+		
 		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundation Code: User Login Page");		
 		theStage.setScene(theUserLoginScene);
@@ -168,6 +171,19 @@ public class ViewUserLogin {
 		button_Quit.setOnAction((_) -> {ControllerUserLogin.performQuit(); });
 
 		//		theRootPane.getChildren().clear();
+		
+		// Establish the text input operand field for the password
+		setupTextUI(text_Password, "Arial", 18, 300, Pos.BASELINE_LEFT, 50, 210, true);
+		text_Password.setPromptText("Enter Password");
+
+		//Role selection
+		setupLabelUI(label_SelectRole, "Arial", 18, 150, Pos.BASELINE_LEFT, 50, 260);
+		combobox_SelectRole.setStyle("-fx-font: 18 Arial;");
+		combobox_SelectRole.setMinWidth(150);
+		combobox_SelectRole.setLayoutX(170);
+		combobox_SelectRole.setLayoutY(255);
+		combobox_SelectRole.getItems().addAll("<Select a Role>", "Admin", "Role1", "Role2");
+		combobox_SelectRole.getSelectionModel().select(0);
 
 		theRootPane.getChildren().addAll(
 				label_ApplicationTitle, 
