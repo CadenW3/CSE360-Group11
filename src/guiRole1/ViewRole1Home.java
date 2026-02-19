@@ -81,6 +81,15 @@ public class ViewRole1Home {
 
 	private static Scene theViewRole1HomeScene;	// The shared Scene each invocation populates
 	protected static final int theRole = 2;		// Admin: 1; Role1: 2; Role2: 3
+	
+	// GUI Area 2: Discussion Thread Management
+	protected static Label label_Discussions = new Label("Manage Discussion Threads");
+	protected static javafx.scene.control.ListView<String> list_Threads = new javafx.scene.control.ListView<>();
+	protected static javafx.scene.control.TextField text_ThreadTitle = new javafx.scene.control.TextField();
+	protected static javafx.scene.control.TextField text_ThreadTopic = new javafx.scene.control.TextField();
+	protected static Button button_CreateThread = new Button("Create");
+	protected static Button button_UpdateThread = new Button("Update");
+	protected static Button button_DeleteThread = new Button("Delete");
 
 	/*-*******************************************************************************************
 
@@ -165,7 +174,52 @@ public class ViewRole1Home {
 		
 		// GUI Area 2
 		
-			// This is a stub, so this area is empty
+		// GUI Area 2
+				setupLabelUI(label_Discussions, "Arial", 18, width, Pos.BASELINE_LEFT, 20, 110);
+				
+				list_Threads.setLayoutX(20);
+				list_Threads.setLayoutY(140);
+				list_Threads.setPrefWidth(760);
+				list_Threads.setPrefHeight(200);
+				
+				// Load initial data
+				ControllerRole1Home.refreshThreads(list_Threads);
+
+				// Listener to auto-fill text fields when a thread is clicked
+				list_Threads.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+					if (newVal != null) {
+						String[] parts = newVal.split("\\|");
+						if (parts.length >= 3) {
+							text_ThreadTitle.setText(parts[1].trim());
+							text_ThreadTopic.setText(parts[2].trim());
+						}
+					}
+				});
+
+				text_ThreadTitle.setLayoutX(20);
+				text_ThreadTitle.setLayoutY(360);
+				text_ThreadTitle.setPrefWidth(200);
+				text_ThreadTitle.setPromptText("Thread Title");
+
+				text_ThreadTopic.setLayoutX(240);
+				text_ThreadTopic.setLayoutY(360);
+				text_ThreadTopic.setPrefWidth(540);
+				text_ThreadTopic.setPromptText("Thread Topic / Description");
+
+				setupButtonUI(button_CreateThread, "Dialog", 14, 100, Pos.CENTER, 20, 400);
+				button_CreateThread.setOnAction((_) -> {
+					ControllerRole1Home.createThread(text_ThreadTitle.getText(), text_ThreadTopic.getText(), list_Threads);
+				});
+
+				setupButtonUI(button_UpdateThread, "Dialog", 14, 100, Pos.CENTER, 140, 400);
+				button_UpdateThread.setOnAction((_) -> {
+					ControllerRole1Home.updateThread(list_Threads.getSelectionModel().getSelectedItem(), text_ThreadTitle.getText(), text_ThreadTopic.getText(), list_Threads);
+				});
+
+				setupButtonUI(button_DeleteThread, "Dialog", 14, 100, Pos.CENTER, 260, 400);
+				button_DeleteThread.setOnAction((_) -> {
+					ControllerRole1Home.deleteThread(list_Threads.getSelectionModel().getSelectedItem(), list_Threads);
+				});
 		
 		
 		// GUI Area 3
@@ -179,8 +233,10 @@ public class ViewRole1Home {
 		
 		// Place all of the widget items into the Root Pane's list of children
          theRootPane.getChildren().addAll(
-			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
-	        line_Separator4, button_Logout, button_Quit);
+     			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
+    			label_Discussions, list_Threads, text_ThreadTitle, text_ThreadTopic, 
+    			button_CreateThread, button_UpdateThread, button_DeleteThread,
+    	        line_Separator4, button_Logout, button_Quit);
 }
 	
 	

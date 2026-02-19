@@ -130,6 +130,32 @@ public class Database {
 	    		+ "emailAddress VARCHAR(255), "
 	            + "role VARCHAR(10))";
 	    statement.execute(invitationCodesTable);
+	    
+	 // Create the Discussion Threads table
+	 		String threadsTable = "CREATE TABLE IF NOT EXISTS DiscussionThreads ("
+	 				+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+	 				+ "title VARCHAR(255), "
+	 				+ "topic VARCHAR(1000), "
+	 				+ "createdBy VARCHAR(255))";
+	 		statement.execute(threadsTable);
+	 		
+	 	// Create the Replies table for nested discussions
+			String repliesTable = "CREATE TABLE IF NOT EXISTS Replies ("
+					+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+					+ "threadId INT, "
+					+ "parentReplyId INT, " // 0 if replying directly to the thread
+					+ "content VARCHAR(2000), "
+					+ "createdBy VARCHAR(255))";
+			statement.execute(repliesTable);
+			
+			// Create the Direct Messages table
+			String dmTable = "CREATE TABLE IF NOT EXISTS DirectMessages ("
+					+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+					+ "sender VARCHAR(255), "
+					+ "receiver VARCHAR(255), "
+					+ "content VARCHAR(2000))";
+			statement.execute(dmTable);
+		
 	}
 
 
@@ -1242,5 +1268,133 @@ public class Database {
 					} catch (SQLException e) {
 						e.printStackTrace();
 					}
+				}
+
+				// CREATE Thread
+				public void createThread(String title, String topic, String createdBy) throws SQLException {
+					String query = "INSERT INTO DiscussionThreads (title, topic, createdBy) VALUES (?, ?, ?)";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, title);
+						pstmt.setString(2, topic);
+						pstmt.setString(3, createdBy);
+						pstmt.executeUpdate();
+					}
+				}
+
+				// READ Threads
+				public java.util.List<String> getThreadList() {
+					java.util.List<String> list = new java.util.ArrayList<>();
+					String query = "SELECT id, title, topic, createdBy FROM DiscussionThreads";
+					try (Statement stmt = connection.createStatement();
+						 ResultSet rs = stmt.executeQuery(query)) {
+						while (rs.next()) {
+							// Format: "ID | Title | Topic | Creator"
+							list.add(rs.getInt("id") + " | " + rs.getString("title") + " | " + rs.getString("topic") + " | " + rs.getString("createdBy"));
+						}
+					} catch (SQLException e) { e.printStackTrace(); }
+					return list;
+				}
+
+				// UPDATE Thread
+				public void updateThread(int id, String newTitle, String newTopic) throws SQLException {
+					String query = "UPDATE DiscussionThreads SET title = ?, topic = ? WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, newTitle);
+						pstmt.setString(2, newTopic);
+						pstmt.setInt(3, id);
+						pstmt.executeUpdate();
+					}
+				}
+
+				// DELETE Thread
+				public void deleteThread(int id) throws SQLException {
+					String query = "DELETE FROM DiscussionThreads WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id);
+						pstmt.executeUpdate();
+					}
+				}
+				
+				
+				public void createReply(int threadId, int parentReplyId, String content, String createdBy) throws SQLException {
+					String query = "INSERT INTO Replies (threadId, parentReplyId, content, createdBy) VALUES (?, ?, ?, ?)";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, threadId);
+						pstmt.setInt(2, parentReplyId);
+						pstmt.setString(3, content);
+						pstmt.setString(4, createdBy);
+						pstmt.executeUpdate();
+					}
+				}
+
+				// Gets all replies for a specific thread
+				public java.util.List<String> getRepliesForThread(int threadId) {
+					java.util.List<String> list = new java.util.ArrayList<>();
+					String query = "SELECT id, parentReplyId, content, createdBy FROM Replies WHERE threadId = ? ORDER BY id ASC";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, threadId);
+						try (ResultSet rs = pstmt.executeQuery()) {
+							while (rs.next()) {
+								list.add(rs.getInt("id") + " | " + rs.getInt("parentReplyId") + " | " 
+										+ rs.getString("content") + " | " + rs.getString("createdBy"));
+							}
+						}
+					} catch (SQLException e) { e.printStackTrace(); }
+					return list;
+				}
+				
+				// Retrieves a single thread's full details by its ID
+				public String getThread(int threadId) {
+					String query = "SELECT id, title, topic, createdBy FROM DiscussionThreads WHERE id = ?";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, threadId);
+						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+							if (rs.next()) {
+								return rs.getInt("id") + " | " + rs.getString("title") + " | " 
+										+ rs.getString("topic") + " | " + rs.getString("createdBy");
+							}
+						}
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					return null;
+				}
+
+				// Retrieves all staff members for the dropdown menu
+				public java.util.List<String> getStaffUsers() {
+					java.util.List<String> list = new java.util.ArrayList<>();
+					String query = "SELECT userName FROM userDB WHERE newStaff = TRUE";
+					try (java.sql.Statement stmt = connection.createStatement();
+						 java.sql.ResultSet rs = stmt.executeQuery(query)) {
+						while (rs.next()) {
+							list.add(rs.getString("userName"));
+						}
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					return list;
+				}
+
+				public void createDirectMessage(String sender, String receiver, String content) throws java.sql.SQLException {
+					String query = "INSERT INTO DirectMessages (sender, receiver, content) VALUES (?, ?, ?)";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, sender);
+						pstmt.setString(2, receiver);
+						pstmt.setString(3, content);
+						pstmt.executeUpdate();
+					}
+				}
+
+				public java.util.List<String> getDirectMessages(String user1, String user2) {
+					java.util.List<String> list = new java.util.ArrayList<>();
+					String query = "SELECT sender, content FROM DirectMessages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) ORDER BY id ASC";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, user1);
+						pstmt.setString(2, user2);
+						pstmt.setString(3, user2);
+						pstmt.setString(4, user1);
+						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+							while (rs.next()) {
+								list.add(rs.getString("sender") + " | " + rs.getString("content"));
+							}
+						}
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					return list;
 				}
 		}

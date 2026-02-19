@@ -73,4 +73,61 @@ public class ControllerRole1Home {
 	protected static void performQuit() {
 		System.exit(0);
 	}
+	
+	private static database.Database theDatabase = applicationMain.FoundationsMain.database;
+
+	// Refreshes the ListView with the latest threads from the DB
+	protected static void refreshThreads(javafx.scene.control.ListView<String> listView) {
+		java.util.List<String> threads = theDatabase.getThreadList();
+		listView.setItems(javafx.collections.FXCollections.observableArrayList(threads));
+	}
+
+	protected static void createThread(String title, String topic, javafx.scene.control.ListView<String> listView) {
+		if (title.isEmpty() || topic.isEmpty()) {
+			showAlert("Error", "Title and Topic cannot be empty.");
+			return;
+		}
+		try {
+			theDatabase.createThread(title, topic, ViewRole1Home.theUser.getUserName());
+			refreshThreads(listView);
+		} catch (Exception e) {
+			showAlert("Database Error", e.getMessage());
+		}
+	}
+
+	protected static void updateThread(String selection, String newTitle, String newTopic, javafx.scene.control.ListView<String> listView) {
+		if (selection == null || newTitle.isEmpty() || newTopic.isEmpty()) {
+			showAlert("Error", "Please select a thread and ensure Title/Topic are filled.");
+			return;
+		}
+		try {
+			int id = Integer.parseInt(selection.split("\\|")[0].trim());
+			theDatabase.updateThread(id, newTitle, newTopic);
+			refreshThreads(listView);
+		} catch (Exception e) {
+			showAlert("Database Error", e.getMessage());
+		}
+	}
+
+	protected static void deleteThread(String selection, javafx.scene.control.ListView<String> listView) {
+		if (selection == null) {
+			showAlert("Error", "Please select a thread to delete.");
+			return;
+		}
+		try {
+			int id = Integer.parseInt(selection.split("\\|")[0].trim());
+			theDatabase.deleteThread(id);
+			refreshThreads(listView);
+		} catch (Exception e) {
+			showAlert("Database Error", e.getMessage());
+		}
+	}
+
+	private static void showAlert(String title, String content) {
+		javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+		alert.setTitle(title);
+		alert.setHeaderText(null);
+		alert.setContentText(content);
+		alert.showAndWait();
+	}
 }
