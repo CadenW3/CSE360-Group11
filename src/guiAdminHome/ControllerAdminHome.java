@@ -300,7 +300,7 @@ public class ControllerAdminHome {
 				role = "Staff";
 			}
 		
-		// Use the Database method to generate the code and insert it with the selected role
+		//Use the Database method to generate the code and insert it with the selected role
 		String inviteCode = theDatabase.generateInvitationCode(email, role);
 		
 		// Update the Invitation Counter on the screen
