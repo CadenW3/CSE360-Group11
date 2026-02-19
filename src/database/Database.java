@@ -1567,4 +1567,48 @@ public class Database {
 					} catch (Exception e) {}
 					return null;
 				}
+				
+				public void softDeleteThread(int id) {
+					String query = "UPDATE DiscussionThreads SET title = '[Deleted]', topic = '[This post was deleted.]' WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				public void softDeleteQuestion(int id) {
+					String query = "UPDATE Questions SET title = '[Deleted]', topic = '[This post was deleted.]' WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				public void softDeleteReply(int id) {
+					String query = "UPDATE Replies SET content = '[This post was deleted.]' WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				public void softDeleteQuestionReply(int id) {
+					String query = "UPDATE QuestionReplies SET content = '[This post was deleted.]' WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				
+				public void deleteQuestion(int id) {
+					String query = "DELETE FROM Questions WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				public void deleteReply(int id) {
+					String query = "DELETE FROM Replies WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				public void deleteQuestionReply(int id) {
+					String query = "DELETE FROM QuestionReplies WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
 		}

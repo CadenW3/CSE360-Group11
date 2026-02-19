@@ -79,11 +79,14 @@ public class ViewRole2Home {
 	protected static final int theRole = 3;		// Admin: 1; Role1: 2; Role2: 3
 	
 	// GUI Area 2: Ed Discussion Style Layout
+	protected static Button button_FilterMyPosts = new Button("My Posts (0)");
+	protected static Button button_FilterUnread = new Button("Unread (0)");
+	
 	protected static javafx.scene.control.TreeView<String> tree_Discussions = new javafx.scene.control.TreeView<>();
 	protected static javafx.scene.control.TextArea text_SelectedDetails = new javafx.scene.control.TextArea();
 	protected static javafx.scene.control.TextField input_ReplyBox = new javafx.scene.control.TextField();
 	protected static Button button_SubmitReply = new Button("Post Reply");
-		
+	protected static javafx.scene.control.TextField input_Filter = new javafx.scene.control.TextField();
 	
 	// Right Side UI Elements
 	protected static javafx.scene.control.ScrollPane scroll_ThreadDetails = new javafx.scene.control.ScrollPane();
@@ -165,18 +168,30 @@ public class ViewRole2Home {
 		
 		// --- GUI Area 2: ED DISCUSSION LAYOUT ---
 		
-		// Left Side: File-manager style drop down tree
+		setupButtonUI(button_FilterMyPosts, "Dialog", 12, 100, Pos.CENTER, 20, 105);
+		setupButtonUI(button_FilterUnread, "Dialog", 12, 100, Pos.CENTER, 140, 105);
+
+		// Search Filter Input Box
+		input_Filter.setLayoutX(250);
+		input_Filter.setLayoutY(105);
+		input_Filter.setPrefWidth(120);
+		input_Filter.setVisible(false);
+		input_Filter.textProperty().addListener((obs, oldVal, newVal) -> {
+			ControllerRole2Home.currentFilterKeyword = newVal;
+			ControllerRole2Home.refreshDiscussionTree(tree_Discussions, theUser.getUserName(), button_FilterMyPosts, button_FilterUnread);
+		});
+
 		// Left Side: Discussions Tree
 		tree_Discussions.setLayoutX(20);
-		tree_Discussions.setLayoutY(110);
-		tree_Discussions.setPrefSize(350, 330); 
-		ControllerRole2Home.refreshDiscussionTree(tree_Discussions, theUser.getUserName(), null, null);
+		tree_Discussions.setLayoutY(135);
+		tree_Discussions.setPrefSize(350, 275); 
+		ControllerRole2Home.refreshDiscussionTree(tree_Discussions, theUser.getUserName(), button_FilterMyPosts, button_FilterUnread);
 
 		// Left Side: Staff Drop-Down Menu
-		setupLabelUI(label_StaffSelect, "Arial", 16, 150, Pos.BASELINE_LEFT, 20, 455);
+		setupLabelUI(label_StaffSelect, "Arial", 16, 150, Pos.BASELINE_LEFT, 20, 420);
 		
 		dropdown_Staff.setLayoutX(140);
-		dropdown_Staff.setLayoutY(450);
+		dropdown_Staff.setLayoutY(415);
 		dropdown_Staff.setPrefWidth(230);
 		dropdown_Staff.getItems().add("<Select Staff Member>");
 		try {
@@ -191,49 +206,56 @@ public class ViewRole2Home {
 		scroll_ThreadDetails.setContent(box_ThreadDetails);
 		scroll_ThreadDetails.setFitToWidth(true); 
 		scroll_ThreadDetails.setLayoutX(390);
-		scroll_ThreadDetails.setLayoutY(110);
-		scroll_ThreadDetails.setPrefSize(390, 200);
+		scroll_ThreadDetails.setLayoutY(135);
+		scroll_ThreadDetails.setPrefSize(390, 275);
 		scroll_ThreadDetails.setStyle("-fx-background-color: white; -fx-border-color: #d1d5db; -fx-background-insets: 0;");
 
 		// Right Side: Reply box
 		input_ReplyBox.setLayoutX(390);
-		input_ReplyBox.setLayoutY(320);
+		input_ReplyBox.setLayoutY(420);
 		input_ReplyBox.setPrefSize(300, 30);
 		input_ReplyBox.setPromptText("Type a reply here...");
 
-		setupButtonUI(button_SubmitReply, "Dialog", 14, 80, Pos.CENTER, 700, 320);
+		setupButtonUI(button_SubmitReply, "Dialog", 14, 80, Pos.CENTER, 700, 420);
+
+		// INITIAL STATE
+		input_ReplyBox.setVisible(false);
+		button_SubmitReply.setVisible(false);
 
 		// Selection Listener 1: Consolidated listener for ANY click in the tree
 		tree_Discussions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
 			if (newVal != null) {
-				// FIX: Delay clear to prevent the IndexOutOfBoundsException crash
 				javafx.application.Platform.runLater(() -> {
 					dropdown_Staff.getSelectionModel().select(0); 
 				});
 				
 				String val = newVal.getValue();
 				
-				// FIX: Visually clear (UNREAD) without rebuilding the tree and crashing
+				// Fix: Visually clear (UNREAD) without rebuilding the tree and crashing
 				if (val.contains("(UNREAD) ")) {
 					newVal.setValue(val.replace("(UNREAD) ", ""));
+					val = newVal.getValue(); // Keep string logic accurate below
+				}
+
+				// Check if they selected a root category to filter
+				if (val.equals("Discussions") || val.equals("Questions")) {
+					input_Filter.setVisible(true);
+					input_Filter.setPromptText("Filter " + val);
+					ControllerRole2Home.currentFilterType = val.equals("Discussions") ? "Discussion" : "Question";
 				}
 				
-				if (val.startsWith("[Staff] ")) {
-					// Load Direct Messages
-					String staffName = val.substring(8).trim();
-					ControllerRole2Home.renderDirectMessages(theUser.getUserName(), staffName, box_ThreadDetails);
-					input_ReplyBox.setPromptText("Message " + staffName + "...");
-				} else {
-					// Find ROOT thread ID and load Thread
-					input_ReplyBox.setPromptText("Type a reply here...");
-					javafx.scene.control.TreeItem<String> current = newVal;
-					while (current != null && !current.getValue().startsWith("[Thread-")) {
-						current = current.getParent();
-					}
-					if (current != null) {
-						int threadId = Integer.parseInt(current.getValue().substring(8, current.getValue().indexOf("]")));
-						ControllerRole2Home.renderPostView(threadId, "Discussion", box_ThreadDetails);
-					}
+				input_ReplyBox.setVisible(true);
+				button_SubmitReply.setVisible(true);
+				input_ReplyBox.setPromptText("Type a reply here...");
+				
+				javafx.scene.control.TreeItem<String> current = newVal;
+				while (current != null && !current.getValue().startsWith("[Thread-") && !current.getValue().startsWith("[Question-")) {
+					current = current.getParent();
+				}
+				if (current != null) {
+					String type = current.getValue().startsWith("[Thread-") ? "Discussion" : "Question";
+					int id = Integer.parseInt(current.getValue().substring(current.getValue().indexOf("-") + 1, current.getValue().indexOf("]")));
+					ControllerRole2Home.renderPostView(id, type, box_ThreadDetails);
 				}
 			}
 		});
@@ -241,11 +263,12 @@ public class ViewRole2Home {
 		// Selection Listener 2: Dropdown for Staff Messaging
 		dropdown_Staff.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
 			if (newVal != null && !newVal.equals("<Select Staff Member>")) {
-				// FIX: Delay clear to prevent the IndexOutOfBoundsException crash
 				javafx.application.Platform.runLater(() -> {
 					tree_Discussions.getSelectionModel().clearSelection(); 
 				});
 				
+				input_ReplyBox.setVisible(true);
+				button_SubmitReply.setVisible(true);
 				input_ReplyBox.setPromptText("Message " + newVal + "...");
 				ControllerRole2Home.renderDirectMessages(theUser.getUserName(), newVal, box_ThreadDetails);
 			}
@@ -265,30 +288,30 @@ public class ViewRole2Home {
 				return;
 			}
 			
-			// 2. Otherwise, we are replying to a Thread
+			// 2. Otherwise, we are replying to a Thread/Question
 			javafx.scene.control.TreeItem<String> selectedThread = tree_Discussions.getSelectionModel().getSelectedItem();
 			if (selectedThread != null) {
 				String val = selectedThread.getValue();
-				int threadId = 0, parentReplyId = 0;
+				int id = 0, parentReplyId = 0;
 				
 				javafx.scene.control.TreeItem<String> current = selectedThread;
-				while (current != null && !current.getValue().startsWith("[Thread-")) {
+				while (current != null && !current.getValue().startsWith("[Thread-") && !current.getValue().startsWith("[Question-")) {
 					current = current.getParent();
 				}
 				if (current != null) {
-					threadId = Integer.parseInt(current.getValue().substring(8, current.getValue().indexOf("]")));
+					id = Integer.parseInt(current.getValue().substring(current.getValue().indexOf("-") + 1, current.getValue().indexOf("]")));
 				}
 				
 				if (val.startsWith("[Reply-")) parentReplyId = Integer.parseInt(val.substring(7, val.indexOf("]")));
 				else if (val.startsWith("[Post-")) parentReplyId = Integer.parseInt(val.substring(6, val.indexOf("]")));
 				
-				if (threadId > 0) {
-					ControllerRole2Home.executeReplyDB(threadId, parentReplyId, "Discussion", input_ReplyBox.getText(), theUser.getUserName(), tree_Discussions, box_ThreadDetails, null, null);;
+				if (id > 0) {
+					String type = current.getValue().startsWith("[Thread-") ? "Discussion" : "Question";
+					ControllerRole2Home.executeReplyDB(id, parentReplyId, type, input_ReplyBox.getText(), theUser.getUserName(), tree_Discussions, box_ThreadDetails, button_FilterMyPosts, button_FilterUnread);
 					input_ReplyBox.clear();
 				}
 			}
 		});
-		
 		
 		// GUI Area 3
         setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
@@ -303,6 +326,7 @@ public class ViewRole2Home {
 		theRootPane.getChildren().clear(); // Prevent duplicate rendering 
         theRootPane.getChildren().addAll(
     			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
+    			button_FilterMyPosts, button_FilterUnread, input_Filter,
     			tree_Discussions, label_StaffSelect, dropdown_Staff, 
     			scroll_ThreadDetails, input_ReplyBox, button_SubmitReply,
     	        line_Separator4, button_Logout, button_Quit);
