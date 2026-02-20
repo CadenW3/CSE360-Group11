@@ -33,8 +33,8 @@ public class ControllerUserLogin {
 
 	*/
 	
-	private static Database theDatabase = applicationMain.FoundationsMain.database;
-	private static Stage theStage;			
+	private static Database theDatabase;	// This points to the database
+	private static Stage theStage;			// This is the stage that is used to display the scene
 	
 	/**
 	 * Default constructor is not used.
@@ -122,9 +122,17 @@ public class ControllerUserLogin {
     	        theDatabase.getCurrentNewRole1(), theDatabase.getCurrentNewRole2());
 
     	int numberOfRoles = theDatabase.getNumberOfRoles(user);		
+    	
+    	boolean isTempAdmin = false;
+    	try {
+    		isTempAdmin = theDatabase.isTempAdmin(username);
+    		if (isTempAdmin && !user.getAdminRole()) {
+    			numberOfRoles++;
+    		}
+    	} catch(Exception e) {}
     			
     	if (numberOfRoles == 1) {
-    		if (user.getAdminRole()) {
+    		if (user.getAdminRole() || isTempAdmin) {
     			guiAdminHome.ViewAdminHome.displayAdminHome(theStage, user);
    			} else if (user.getNewRole1()) {
    				guiRole1.ViewRole1Home.displayRole1Home(theStage, user);

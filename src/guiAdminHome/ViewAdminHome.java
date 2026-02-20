@@ -60,6 +60,10 @@ public class ViewAdminHome {
 	protected static Label label_PageTitle = new Label();
 	protected static Label label_UserDetails = new Label();
 	protected static Button button_UpdateThisUser = new Button("Account Update");
+	
+	// --- NEW FEATURE: TOGGLE BUTTONS ---
+	protected static Button button_ManageUsersMode = new Button("Manage Users");
+	protected static Button button_RequestsMode = new Button("Requests");
 
 	// This is a separator and it is used to partition the GUI for various tasks
 	private static Line line_Separator1 = new Line(20, 95, width-20, 95);
@@ -97,6 +101,11 @@ public class ViewAdminHome {
 	protected static Button button_ListUsers = new Button("List All Users");
 	protected static Button button_AddRemoveRoles = new Button("Add/Remove Roles");
 	protected static Alert alertNotImplemented = new Alert(AlertType.INFORMATION);
+	
+	// --- NEW FEATURE: REQUESTS UI ---
+	protected static javafx.scene.control.TreeView<String> tree_AdminRequests = new javafx.scene.control.TreeView<>();
+	protected static javafx.scene.control.ScrollPane scroll_RequestDetails = new javafx.scene.control.ScrollPane();
+	protected static javafx.scene.layout.VBox box_RequestDetails = new javafx.scene.layout.VBox();
 
 	// This is a separator and it is used to partition the GUI for various tasks
 	private static Line line_Separator4 = new Line(20, 525, width-20,525);
@@ -159,6 +168,9 @@ public class ViewAdminHome {
 			// Update Invitation Counter (NEW)
 			label_NumberOfInvitations.setText("Number of outstanding invitations: " + theDatabase.getNumberOfInvitations());
 			
+			// Update the Requests Tree
+			ControllerAdminHome.refreshRequestsTree(tree_AdminRequests);
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -194,8 +206,12 @@ public class ViewAdminHome {
 		setupButtonUI(button_UpdateThisUser, "Dialog", 18, 170, Pos.CENTER, 610, 45);
 		button_UpdateThisUser.setOnAction((event) -> 
 				{ViewUserUpdate.displayUserUpdate(theStage, theUser);});
+		
+		// Setup Mode Toggle Buttons in Header Area
+		setupButtonUI(button_ManageUsersMode, "Dialog", 14, 130, Pos.CENTER, 330, 50);
+		setupButtonUI(button_RequestsMode, "Dialog", 14, 130, Pos.CENTER, 470, 50);
 			
-		// GUI Area 2 - FIX: Styled label_NumberOfInvitations to match users and removed duplication
+		// GUI Area 2
 		setupLabelUI(label_NumberOfInvitations, "Arial", 20, 400, Pos.BASELINE_LEFT, 20, 105);
 		setupLabelUI(label_NumberOfUsers, "Arial", 20, 400, Pos.BASELINE_LEFT, 20, 135);
 	
@@ -240,6 +256,77 @@ public class ViewAdminHome {
 		setupButtonUI(button_AddRemoveRoles, "Dialog", 16, 250, Pos.CENTER, 20, 470);
 		button_AddRemoveRoles.setOnAction((event) -> {ControllerAdminHome.addRemoveRoles(); });
 		
+		// --- SETUP REQUESTS UI (Initially Hidden) ---
+		tree_AdminRequests.setLayoutX(20);
+		tree_AdminRequests.setLayoutY(110);
+		tree_AdminRequests.setPrefSize(350, 400);
+		tree_AdminRequests.setVisible(false);
+		
+		box_RequestDetails.setStyle("-fx-background-color: white;");
+		box_RequestDetails.setPrefWidth(370);
+		scroll_RequestDetails.setContent(box_RequestDetails);
+		scroll_RequestDetails.setFitToWidth(true);
+		scroll_RequestDetails.setLayoutX(390);
+		scroll_RequestDetails.setLayoutY(110);
+		scroll_RequestDetails.setPrefSize(390, 400);
+		scroll_RequestDetails.setStyle("-fx-background-color: white; -fx-border-color: #d1d5db; -fx-background-insets: 0;");
+		scroll_RequestDetails.setVisible(false);
+		
+		// Toggles logic
+		button_ManageUsersMode.setOnAction((_) -> {
+			tree_AdminRequests.setVisible(false);
+			scroll_RequestDetails.setVisible(false);
+			
+			label_NumberOfInvitations.setVisible(true);
+			label_NumberOfUsers.setVisible(true);
+			line_Separator2.setVisible(true);
+			label_Invitations.setVisible(true);
+			label_InvitationEmailAddress.setVisible(true);
+			text_InvitationEmailAddress.setVisible(true);
+			combobox_SelectRole.setVisible(true);
+			button_SendInvitation.setVisible(true);
+			line_Separator3.setVisible(true);
+			button_ManageInvitations.setVisible(true);
+			button_SetOnetimePassword.setVisible(true);
+			button_DeleteUser.setVisible(true);
+			button_ListUsers.setVisible(true);
+			button_AddRemoveRoles.setVisible(true);
+		});
+
+		button_RequestsMode.setOnAction((_) -> {
+			label_NumberOfInvitations.setVisible(false);
+			label_NumberOfUsers.setVisible(false);
+			line_Separator2.setVisible(false);
+			label_Invitations.setVisible(false);
+			label_InvitationEmailAddress.setVisible(false);
+			text_InvitationEmailAddress.setVisible(false);
+			combobox_SelectRole.setVisible(false);
+			button_SendInvitation.setVisible(false);
+			line_Separator3.setVisible(false);
+			button_ManageInvitations.setVisible(false);
+			button_SetOnetimePassword.setVisible(false);
+			button_DeleteUser.setVisible(false);
+			button_ListUsers.setVisible(false);
+			button_AddRemoveRoles.setVisible(false);
+
+			tree_AdminRequests.setVisible(true);
+			scroll_RequestDetails.setVisible(true);
+			ControllerAdminHome.refreshRequestsTree(tree_AdminRequests);
+			box_RequestDetails.getChildren().clear();
+		});
+
+		tree_AdminRequests.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+			if (newVal != null && newVal.isLeaf()) {
+				String val = newVal.getValue();
+				if (val.startsWith("[Req-")) {
+					int id = Integer.parseInt(val.substring(5, val.indexOf("]")));
+					ControllerAdminHome.renderAdminRequestDetails(id, box_RequestDetails, tree_AdminRequests);
+				}
+			} else {
+				box_RequestDetails.getChildren().clear();
+			}
+		});
+		
 		// GUI Area 5
 		setupButtonUI(button_Logout, "Dialog", 18, 250, Pos.CENTER, 20, 540);
 		button_Logout.setOnAction((event) -> {ControllerAdminHome.performLogout(); });
@@ -252,19 +339,21 @@ public class ViewAdminHome {
 		// Place all of the widget items into the Root Pane's list of children
 		theRootPane.getChildren().addAll(
 			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
- 		label_NumberOfInvitations, label_NumberOfUsers,
- 		line_Separator2,
- 		label_Invitations, 
- 		label_InvitationEmailAddress, text_InvitationEmailAddress,
- 		combobox_SelectRole, button_SendInvitation, line_Separator3,
- 		button_ManageInvitations,
- 		button_SetOnetimePassword,
- 		button_DeleteUser,
- 		button_ListUsers,
- 		button_AddRemoveRoles,
- 		line_Separator4, 
- 		button_Logout,
- 		button_Quit
+			button_ManageUsersMode, button_RequestsMode,
+	 		label_NumberOfInvitations, label_NumberOfUsers,
+	 		line_Separator2,
+	 		label_Invitations, 
+	 		label_InvitationEmailAddress, text_InvitationEmailAddress,
+	 		combobox_SelectRole, button_SendInvitation, line_Separator3,
+	 		button_ManageInvitations,
+	 		button_SetOnetimePassword,
+	 		button_DeleteUser,
+	 		button_ListUsers,
+	 		button_AddRemoveRoles,
+	 		tree_AdminRequests, scroll_RequestDetails,
+	 		line_Separator4, 
+	 		button_Logout,
+	 		button_Quit
  		);
 		
 		// With theRootPane set up with the common widgets, it is up to displayAdminHome to show

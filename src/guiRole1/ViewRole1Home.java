@@ -4,7 +4,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TreeItem;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
@@ -82,6 +81,7 @@ public class ViewRole1Home {
 	// Mode Toggle Buttons
 	protected static Button button_DiscussionsMode = new Button("Discussions");
 	protected static Button button_MessagesMode = new Button("Messages");
+	protected static Button button_RequestsMode = new Button("Requests");
 
 	// UI Elements for Filtering
 	protected static Button button_FilterMyPosts = new Button("My Posts (0)");
@@ -91,6 +91,7 @@ public class ViewRole1Home {
 	// GUI Area 2: Discussion Thread Management UI Elements
 	protected static javafx.scene.control.TreeView<String> tree_Discussions = new javafx.scene.control.TreeView<>();
 	protected static javafx.scene.control.TreeView<String> tree_Messages = new javafx.scene.control.TreeView<>();
+	protected static javafx.scene.control.TreeView<String> tree_Requests = new javafx.scene.control.TreeView<>();
 	
 	protected static javafx.scene.control.ScrollPane scroll_ThreadDetails = new javafx.scene.control.ScrollPane();
 	protected static javafx.scene.layout.VBox box_ThreadDetails = new javafx.scene.layout.VBox();
@@ -132,7 +133,9 @@ public class ViewRole1Home {
 		theUser = user;
 		
 		// If not yet established, populate the static aspects of the GUI
-		if (theView == null) theView = new ViewRole1Home();		// Instantiate singleton if needed
+		if (theView == null) {
+			theView = new ViewRole1Home();		// Instantiate singleton if needed
+		}
 		
 		// Populate the dynamic aspects of the GUI with the data from the user and the current
 		// state of the system.
@@ -186,8 +189,9 @@ public class ViewRole1Home {
 		// --- GUI Area 2: STAFF DISCUSSIONS ---
 
 		// Mode Buttons Setup
-		setupButtonUI(button_DiscussionsMode, "Dialog", 14, 140, Pos.CENTER, 20, 105);
-		setupButtonUI(button_MessagesMode, "Dialog", 14, 140, Pos.CENTER, 170, 105);
+		setupButtonUI(button_DiscussionsMode, "Dialog", 14, 120, Pos.CENTER, 20, 105);
+		setupButtonUI(button_MessagesMode, "Dialog", 14, 120, Pos.CENTER, 150, 105);
+		setupButtonUI(button_RequestsMode, "Dialog", 14, 120, Pos.CENTER, 280, 105);
 
 		// Filters
 		setupButtonUI(button_FilterMyPosts, "Dialog", 12, 100, Pos.CENTER, 20, 145);
@@ -223,6 +227,11 @@ public class ViewRole1Home {
 		tree_Messages.setLayoutY(145); 
 		tree_Messages.setPrefSize(350, 305); 
 		tree_Messages.setVisible(false);
+
+		tree_Requests.setLayoutX(20);
+		tree_Requests.setLayoutY(145); 
+		tree_Requests.setPrefSize(350, 305); 
+		tree_Requests.setVisible(false);
 
 		// Thread Creation Box
 		input_NewTitle.setLayoutX(20);
@@ -261,6 +270,7 @@ public class ViewRole1Home {
 		// Mode Switching Actions
 		button_DiscussionsMode.setOnAction((_) -> {
 		    tree_Messages.setVisible(false);
+			tree_Requests.setVisible(false);
 		    tree_Discussions.setVisible(true);
 		    button_FilterMyPosts.setVisible(true);
 		    button_FilterUnread.setVisible(true);
@@ -276,11 +286,13 @@ public class ViewRole1Home {
 		    box_ThreadDetails.getChildren().clear();
 		    input_ReplyBox.setVisible(true);
 		    button_SubmitReply.setVisible(true);
+			button_SubmitReply.setText("Post Reply");
 		    input_ReplyBox.setPromptText("Type a reply (Defaults to General)...");
 		});
 
 		button_MessagesMode.setOnAction((_) -> {
 		    tree_Discussions.setVisible(false);
+			tree_Requests.setVisible(false);
 		    button_FilterMyPosts.setVisible(false);
 		    button_FilterUnread.setVisible(false);
 		    input_Filter.setVisible(false);
@@ -314,18 +326,52 @@ public class ViewRole1Home {
 		    button_SubmitReply.setVisible(false);
 		});
 
+		button_RequestsMode.setOnAction((_) -> {
+			tree_Discussions.setVisible(false);
+			tree_Messages.setVisible(false);
+		    button_FilterMyPosts.setVisible(false);
+		    button_FilterUnread.setVisible(false);
+		    input_Filter.setVisible(false);
+		    input_NewTitle.setVisible(false);
+		    input_NewTopic.setVisible(false);
+		    button_CreateThread.setVisible(false);
+		    button_CreateQuestion.setVisible(false);
+
+			ControllerRole1Home.refreshRequestsTree(tree_Requests, theUser.getUserName());
+			tree_Requests.setVisible(true);
+			
+			box_ThreadDetails.getChildren().clear();
+			ControllerRole1Home.renderStaffRequestDetails(-1, box_ThreadDetails, tree_Requests); // Render New Request page by default
+			
+			input_ReplyBox.setVisible(false);
+			button_SubmitReply.setVisible(false);
+		});
+
 		// Listeners
 		tree_Messages.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
 		    if (newVal != null && newVal.isLeaf()) {
 		        String target = newVal.getValue();
 		        input_ReplyBox.setVisible(true);
 		        button_SubmitReply.setVisible(true);
+				button_SubmitReply.setText("Send");
 		        input_ReplyBox.setPromptText("Message " + target + "...");
 		        ControllerRole1Home.renderDirectMessages(theUser.getUserName(), target, box_ThreadDetails);
 		    } else {
 		        input_ReplyBox.setVisible(false);
 		        button_SubmitReply.setVisible(false);
 		    }
+		});
+
+		tree_Requests.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+			if (newVal != null && newVal.isLeaf()) {
+				String val = newVal.getValue();
+				if (val.startsWith("[Req-")) {
+					int id = Integer.parseInt(val.substring(5, val.indexOf("]")));
+					ControllerRole1Home.renderStaffRequestDetails(id, box_ThreadDetails, tree_Requests);
+				}
+			} else {
+				ControllerRole1Home.renderStaffRequestDetails(-1, box_ThreadDetails, tree_Requests); // Blank / New request form
+			}
 		});
 
 		tree_Discussions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
@@ -346,6 +392,7 @@ public class ViewRole1Home {
 				
 				input_ReplyBox.setVisible(true);
 				button_SubmitReply.setVisible(true);
+				button_SubmitReply.setText("Post Reply");
 				input_ReplyBox.setPromptText("Type a reply here...");
 				
 				javafx.scene.control.TreeItem<String> current = newVal;
@@ -435,7 +482,7 @@ public class ViewRole1Home {
 		theRootPane.getChildren().clear(); // Fixes duplicate children crash
          theRootPane.getChildren().addAll(
  			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
- 			button_DiscussionsMode, button_MessagesMode, button_FilterMyPosts, button_FilterUnread, input_Filter, tree_Discussions, tree_Messages,
+ 			button_DiscussionsMode, button_MessagesMode, button_RequestsMode, button_FilterMyPosts, button_FilterUnread, input_Filter, tree_Discussions, tree_Messages, tree_Requests,
  			input_NewTitle, input_NewTopic, button_CreateThread, button_CreateQuestion,
  			scroll_ThreadDetails, input_ReplyBox, button_SubmitReply,
  	        line_Separator4, button_Logout, button_Quit);
@@ -462,6 +509,7 @@ public class ViewRole1Home {
 			
 			tree_Discussions.setPrefHeight(h - 330);
 			tree_Messages.setPrefHeight(h - 295);
+			tree_Requests.setPrefHeight(h - 295);
 			scroll_ThreadDetails.setPrefHeight(h - 325);
 			
 			input_ReplyBox.setLayoutY(h - 180);

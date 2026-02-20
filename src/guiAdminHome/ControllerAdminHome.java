@@ -25,6 +25,112 @@ public class ControllerAdminHome {
 	
 	public ControllerAdminHome() {
 	}
+	
+	// --- NEW ADMIN REQUEST FEATURE METHODS ---
+	public static void refreshRequestsTree(javafx.scene.control.TreeView<String> treeView) {
+        javafx.scene.control.TreeItem<String> hiddenRoot = new javafx.scene.control.TreeItem<>("Hidden");
+        javafx.scene.control.TreeItem<String> openRoot = new javafx.scene.control.TreeItem<>("Open Requests");
+        javafx.scene.control.TreeItem<String> closedRoot = new javafx.scene.control.TreeItem<>("Closed Requests");
+        openRoot.setExpanded(true); closedRoot.setExpanded(true);
+
+        java.util.List<String> openReqs = theDatabase.getAdminRequests("Pending", null);
+        for (String r : openReqs) {
+            String[] p = r.split("<SEP>");
+            openRoot.getChildren().add(new javafx.scene.control.TreeItem<>("[Req-" + p[0] + "] " + p[1]));
+        }
+
+        java.util.List<String> closedReqs = theDatabase.getAdminRequests("Closed", null);
+        for (String r : closedReqs) {
+            String[] p = r.split("<SEP>");
+            closedRoot.getChildren().add(new javafx.scene.control.TreeItem<>("[Req-" + p[0] + "] " + p[1] + " (" + p[2] + ")"));
+        }
+
+        hiddenRoot.getChildren().addAll(openRoot, closedRoot);
+        treeView.setRoot(hiddenRoot);
+        treeView.setShowRoot(false);
+    }
+	
+	public static void renderAdminRequestDetails(int reqId, javafx.scene.layout.VBox container, javafx.scene.control.TreeView<String> tree) {
+		container.getChildren().clear();
+		container.setStyle("-fx-padding: 15; -fx-background-color: white;");
+		
+		java.util.List<String> reqs = theDatabase.getAdminRequests(null, null);
+		String[] reqParts = null;
+		for (String r : reqs) {
+			String[] p = r.split("<SEP>");
+			if (Integer.parseInt(p[0]) == reqId) { reqParts = p; break; }
+		}
+		if (reqParts == null) return;
+		
+		String username = reqParts[1];
+		String status = reqParts[2];
+		boolean wasDenied = reqParts[3].equals("1");
+		String message = reqParts[4];
+		String adminNotes = reqParts.length > 5 ? reqParts[5] : "";
+		
+		javafx.scene.control.Label title = new javafx.scene.control.Label("Admin Privileges Request #" + reqId);
+		title.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 18));
+		
+		javafx.scene.control.Label lblUser = new javafx.scene.control.Label("From: " + username);
+		lblUser.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 14));
+		
+		javafx.scene.control.Label lblWarning = new javafx.scene.control.Label();
+		if (wasDenied) {
+			lblWarning.setText("⚠️ WARNING: This user was previously denied a request.");
+			lblWarning.setTextFill(javafx.scene.paint.Color.RED);
+		}
+		
+		javafx.scene.layout.VBox msgBox = new javafx.scene.layout.VBox(5);
+		msgBox.setStyle("-fx-background-color: #f3f4f6; -fx-padding: 10; -fx-background-radius: 5;");
+		javafx.scene.control.Label lblMsg = new javafx.scene.control.Label(message);
+		lblMsg.setWrapText(true);
+		msgBox.getChildren().addAll(new javafx.scene.control.Label("User's Request Message:"), lblMsg);
+		
+		javafx.scene.control.Label lblNotes = new javafx.scene.control.Label("Admin Notes (Only visible to you & Staff):");
+		javafx.scene.control.TextArea txtNotes = new javafx.scene.control.TextArea(adminNotes);
+		txtNotes.setPrefRowCount(4);
+		txtNotes.setWrapText(true);
+		
+		container.getChildren().addAll(title, lblUser);
+		if (wasDenied) container.getChildren().add(lblWarning);
+		container.getChildren().addAll(msgBox, lblNotes, txtNotes);
+		
+		if (status.equals("Pending")) {
+			javafx.scene.layout.HBox btnBox = new javafx.scene.layout.HBox(10);
+			javafx.scene.control.Button btnAccept = new javafx.scene.control.Button("Accept (Grants 24h Admin)");
+			btnAccept.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold;");
+			btnAccept.setOnAction(e -> {
+				theDatabase.acceptAdminRequest(reqId, username, txtNotes.getText());
+				refreshRequestsTree(tree);
+				renderAdminRequestDetails(reqId, container, tree);
+			});
+			
+			javafx.scene.control.Button btnDeny = new javafx.scene.control.Button("Deny Request");
+			btnDeny.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
+			btnDeny.setOnAction(e -> {
+				theDatabase.denyAdminRequest(reqId, txtNotes.getText());
+				refreshRequestsTree(tree);
+				renderAdminRequestDetails(reqId, container, tree);
+			});
+			
+			btnBox.getChildren().addAll(btnAccept, btnDeny);
+			container.getChildren().add(btnBox);
+		} else {
+			javafx.scene.control.Label lblStatus = new javafx.scene.control.Label("Status: " + status);
+			lblStatus.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 14));
+			if (status.equals("Accepted")) lblStatus.setTextFill(javafx.scene.paint.Color.GREEN);
+			else lblStatus.setTextFill(javafx.scene.paint.Color.RED);
+			
+			javafx.scene.control.Button btnUpdateNotes = new javafx.scene.control.Button("Save Updated Notes");
+			btnUpdateNotes.setOnAction(e -> {
+				theDatabase.updateAdminRequestNotes(reqId, txtNotes.getText());
+				refreshRequestsTree(tree);
+			});
+			
+			container.getChildren().addAll(lblStatus, btnUpdateNotes);
+		}
+	}
+	// --- END NEW ADMIN REQUEST FEATURE METHODS ---
 
 	// ----------------------------------------------------------------------
 		// ONE-TIME PASSWORD FEATURE
@@ -260,18 +366,16 @@ public class ControllerAdminHome {
 				}
 			}
 		}
-
-		// ----------------------------------------------------------------------
-		// LIST USERS FEATURE
-		// ----------------------------------------------------------------------
 		protected static void listUsers() {
 			try {
-				String report = theDatabase.getListOfUsers();
-				
+				// FIX: Convert the List<String> into a single formatted String with line breaks!
+				java.util.List<String> userList = theDatabase.getListOfUsers();
+				String report = String.join("\n", userList);
+						
 				Alert alert = new Alert(AlertType.INFORMATION);
 				alert.setTitle("System User List");
 				alert.setHeaderText("Registered Users");
-				
+						
 				// Use a TextArea to ensure the content is fully copyable and formatted cleanly
 				javafx.scene.control.TextArea textArea = new javafx.scene.control.TextArea(report);
 				textArea.setEditable(false);
@@ -279,14 +383,14 @@ public class ControllerAdminHome {
 				textArea.setStyle("-fx-font-family: 'Monospaced'; -fx-font-size: 13px;"); // Monospace aligns columns perfectly
 				textArea.setPrefWidth(550);
 				textArea.setPrefHeight(300);
-				
+						
 				alert.getDialogPane().setContent(textArea);
 				alert.showAndWait();
-				
-			} catch (SQLException e) {
-				showAlert("Database Error", e.getMessage());
+						
+			} catch (Exception e) {
+			showAlert("Database Error", e.getMessage());
 			}
-		}
+	}
 	
 
 		protected static void performInvitation() {
@@ -433,6 +537,10 @@ public class ControllerAdminHome {
 	}
 	
 	protected static void performQuit() {
+		// Safely release the SQLite lock before quitting
+		if (applicationMain.FoundationsMain.database != null) {
+			applicationMain.FoundationsMain.database.closeConnection();
+		}
 		System.exit(0);
 	}
 	

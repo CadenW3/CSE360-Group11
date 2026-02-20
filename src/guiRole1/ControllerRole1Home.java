@@ -39,6 +39,113 @@ public class ControllerRole1Home {
 	 */
 	public ControllerRole1Home() {
 	}
+	
+	public static void refreshRequestsTree(javafx.scene.control.TreeView<String> treeView, String username) {
+        javafx.scene.control.TreeItem<String> hiddenRoot = new javafx.scene.control.TreeItem<>("Hidden");
+        javafx.scene.control.TreeItem<String> pendingRoot = new javafx.scene.control.TreeItem<>("Pending Requests");
+        javafx.scene.control.TreeItem<String> closedRoot = new javafx.scene.control.TreeItem<>("Closed Requests");
+        pendingRoot.setExpanded(true); closedRoot.setExpanded(true);
+
+        java.util.List<String> openReqs = theDatabase.getAdminRequests("Pending", username);
+        for (String r : openReqs) {
+            String[] p = r.split("<SEP>");
+            pendingRoot.getChildren().add(new javafx.scene.control.TreeItem<>("[Req-" + p[0] + "] Pending"));
+        }
+
+        java.util.List<String> closedReqs = theDatabase.getAdminRequests("Closed", username);
+        for (String r : closedReqs) {
+            String[] p = r.split("<SEP>");
+            closedRoot.getChildren().add(new javafx.scene.control.TreeItem<>("[Req-" + p[0] + "] " + p[2]));
+        }
+
+        hiddenRoot.getChildren().addAll(pendingRoot, closedRoot);
+        treeView.setRoot(hiddenRoot);
+        treeView.setShowRoot(false);
+    }
+	
+	public static void renderStaffRequestDetails(int reqId, javafx.scene.layout.VBox container, javafx.scene.control.TreeView<String> tree) {
+		container.getChildren().clear();
+		container.setStyle("-fx-padding: 15; -fx-background-color: white;");
+		
+		if (reqId == -1) {
+			javafx.scene.control.Label title = new javafx.scene.control.Label("Request Admin Privileges");
+			title.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 18));
+			javafx.scene.control.Label desc = new javafx.scene.control.Label("Write a message to the Admins explaining why you need temporary Admin privileges.");
+			desc.setWrapText(true);
+			
+			javafx.scene.control.TextArea txtMsg = new javafx.scene.control.TextArea();
+			txtMsg.setPromptText("Enter your reason here...");
+			txtMsg.setPrefRowCount(4);
+			
+			javafx.scene.control.Button btnSubmit = new javafx.scene.control.Button("Submit Request");
+			btnSubmit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold;");
+			btnSubmit.setOnAction(e -> {
+				if (!txtMsg.getText().isEmpty()) {
+					theDatabase.submitAdminRequest(ViewRole1Home.theUser.getUserName(), txtMsg.getText());
+					refreshRequestsTree(tree, ViewRole1Home.theUser.getUserName());
+					renderStaffRequestDetails(-1, container, tree);
+				}
+			});
+			container.getChildren().addAll(title, desc, txtMsg, btnSubmit);
+			return;
+		}
+		
+		java.util.List<String> reqs = theDatabase.getAdminRequests(null, ViewRole1Home.theUser.getUserName());
+		String[] reqParts = null;
+		for (String r : reqs) {
+			String[] p = r.split("<SEP>");
+			if (Integer.parseInt(p[0]) == reqId) { reqParts = p; break; }
+		}
+		if (reqParts == null) return;
+		
+		String status = reqParts[2];
+		String message = reqParts[4];
+		String adminNotes = reqParts.length > 5 ? reqParts[5] : "";
+		
+		javafx.scene.control.Label title = new javafx.scene.control.Label("Request #" + reqId + " Details");
+		title.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 18));
+		
+		javafx.scene.control.Label lblStatus = new javafx.scene.control.Label("Status: " + status);
+		lblStatus.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 14));
+		if (status.equals("Accepted")) lblStatus.setTextFill(javafx.scene.paint.Color.GREEN);
+		else if (status.equals("Denied")) lblStatus.setTextFill(javafx.scene.paint.Color.RED);
+		
+		container.getChildren().addAll(title, lblStatus);
+		
+		if (status.equals("Pending")) {
+			javafx.scene.layout.VBox msgBox = new javafx.scene.layout.VBox(5);
+			msgBox.setStyle("-fx-background-color: #f3f4f6; -fx-padding: 10; -fx-background-radius: 5;");
+			javafx.scene.control.Label lblMsg = new javafx.scene.control.Label(message);
+			lblMsg.setWrapText(true);
+			msgBox.getChildren().addAll(new javafx.scene.control.Label("Your Message:"), lblMsg);
+			container.getChildren().add(msgBox);
+		} else {
+			if (!adminNotes.isEmpty()) {
+				javafx.scene.layout.VBox noteBox = new javafx.scene.layout.VBox(5);
+				noteBox.setStyle("-fx-background-color: #fef3c7; -fx-padding: 10; -fx-background-radius: 5; -fx-border-color: #f59e0b; -fx-border-radius: 5;");
+				javafx.scene.control.Label lblNotes = new javafx.scene.control.Label(adminNotes);
+				lblNotes.setWrapText(true);
+				noteBox.getChildren().addAll(new javafx.scene.control.Label("Admin Notes:"), lblNotes);
+				container.getChildren().add(noteBox);
+			}
+			
+			javafx.scene.control.Label lblEdit = new javafx.scene.control.Label("Update and Resubmit Request:");
+			lblEdit.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 14));
+			javafx.scene.control.TextArea txtEdit = new javafx.scene.control.TextArea(message);
+			txtEdit.setPrefRowCount(4);
+			
+			javafx.scene.control.Button btnResubmit = new javafx.scene.control.Button("Resubmit Request");
+			btnResubmit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold;");
+			btnResubmit.setOnAction(e -> {
+				if (!txtEdit.getText().isEmpty()) {
+					theDatabase.resubmitAdminRequest(reqId, txtEdit.getText());
+					refreshRequestsTree(tree, ViewRole1Home.theUser.getUserName());
+					renderStaffRequestDetails(reqId, container, tree);
+				}
+			});
+			container.getChildren().addAll(lblEdit, txtEdit, btnResubmit);
+		}
+	}
 
 	// Helper method: Recursively cleans up any soft-deleted posts that no longer have active replies under them
 	private static java.util.List<String> cleanupOrphanedDeletes(java.util.List<String> replies, String type) {
@@ -59,11 +166,8 @@ public class ControllerRole1Home {
 				
 				if (content.equals("[This post was deleted.]") && !hasChildren) {
 					try {
-						if (type.equals("Discussion")) {
-							theDatabase.deleteReply(rId);
-						} else {
-							theDatabase.deleteQuestionReply(rId);
-						}
+						if (type.equals("Discussion")) theDatabase.deleteReply(rId);
+						else theDatabase.deleteQuestionReply(rId);
 					} catch (Exception e) { e.printStackTrace(); }
 					changed = true; 
 				} else {

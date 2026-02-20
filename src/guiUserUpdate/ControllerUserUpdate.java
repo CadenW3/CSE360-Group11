@@ -38,22 +38,22 @@ public class ControllerUserUpdate {
 	 * * @param theUser specifies the user so we go to the right page and so the right information
 	 */
 	protected static void goToUserHomePage(Stage theStage, User theUser) {
-		database.Database db = applicationMain.FoundationsMain.database;
-		int numRoles = db.getNumberOfRoles(theUser);
 		
-		if (numRoles == 1) {
-			if (theUser.getAdminRole()) guiAdminHome.ViewAdminHome.displayAdminHome(theStage, theUser);
-			else if (theUser.getNewRole1()) guiRole1.ViewRole1Home.displayRole1Home(theStage, theUser);
-			else if (theUser.getNewRole2()) guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
-		} else {
-			int active = applicationMain.FoundationsMain.activeHomePage;
-			
-			if (active == 1 && theUser.getAdminRole()) guiAdminHome.ViewAdminHome.displayAdminHome(theStage, theUser);
-			else if (active == 2 && theUser.getNewRole1()) guiRole1.ViewRole1Home.displayRole1Home(theStage, theUser);
-			else if (active == 3 && theUser.getNewRole2()) guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
-			else {
-				guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(theStage, theUser);
-			}
+		int theRole = applicationMain.FoundationsMain.activeHomePage;
+
+		switch (theRole) {
+		case 1:
+			guiAdminHome.ViewAdminHome.displayAdminHome(theStage, theUser);
+			break;
+		case 2:
+			guiRole1.ViewRole1Home.displayRole1Home(theStage, theUser);
+			break;
+		case 3:
+			guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
+			break;
+		default: 
+			guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(theStage, theUser);
+			break;
 		}
  	}
 	

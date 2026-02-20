@@ -181,6 +181,22 @@ public class Database {
 					+ "PRIMARY KEY(username, postId, postType))";
 			statement.execute(rpTable);
 		
+			// Admin Requests Tables
+			String adminReqTable = "CREATE TABLE IF NOT EXISTS AdminRequests ("
+					+ "id INT AUTO_INCREMENT PRIMARY KEY, "
+					+ "username VARCHAR(255), "
+					+ "message VARCHAR(2000), "
+					+ "status VARCHAR(50), "
+					+ "admin_notes VARCHAR(2000), "
+					+ "was_denied INT DEFAULT 0)";
+			statement.execute(adminReqTable);
+
+			// Temporary Admins Table
+			String tempAdminsTable = "CREATE TABLE IF NOT EXISTS TempAdmins ("
+					+ "username VARCHAR(255) PRIMARY KEY, "
+					+ "expiry_time BIGINT)";
+			statement.execute(tempAdminsTable);
+			
 	}
 
 
@@ -1122,33 +1138,6 @@ public class Database {
 			return false;
 		}
 
-		public String getListOfUsers() throws SQLException {
-			String query = "SELECT userName, emailAddress, adminRole, newRole1, newRole2 FROM userDB"; 
-			Statement stmt = connection.createStatement();
-			ResultSet rs = stmt.executeQuery(query);
-			
-			StringBuilder userList = new StringBuilder();
-			userList.append(String.format("%-15s | %-25s | %s\n", "Username", "Email Address", "Roles"));
-			userList.append("----------------------------------------------------------------------\n");
-			
-			while (rs.next()) {
-				String uname = rs.getString("userName");
-				String email = rs.getString("emailAddress");
-				if (email == null || email.isEmpty()) email = "None";
-				
-				StringBuilder roles = new StringBuilder();
-				if (rs.getBoolean("adminRole")) roles.append("Admin ");
-				// CHANGED: Display "Staff" instead of Role1
-				if (rs.getBoolean("newRole1")) roles.append("Staff ");
-				// CHANGED: Display "Student" instead of Role2
-				if (rs.getBoolean("newRole2")) roles.append("Student ");
-				
-				if (roles.length() == 0) roles.append("None");
-				
-				userList.append(String.format("%-15s | %-25s | %s\n", uname, email, roles.toString().trim()));
-			}
-			return userList.toString();
-		}
 
 		/**
 		 * Deletes a user from the database.
@@ -1660,5 +1649,147 @@ public class Database {
 						if (rs.next()) return rs.getInt("id");
 					} catch (SQLException e) {}
 					return 1;
+				}
+				
+				// --- ADMIN REQUESTS & TEMP ADMIN OPERATIONS ---
+				public boolean isTempAdmin(String username) {
+					if (username == null || username.trim().isEmpty()) return false;
+					String query = "SELECT expiry_time FROM TempAdmins WHERE username = ?";
+					boolean isExpired = false;
+					boolean isActive = false;
+					
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, username);
+						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+							if (rs.next()) {
+								long expiry = rs.getLong("expiry_time");
+								if (System.currentTimeMillis() < expiry) {
+									isActive = true;
+								} else {
+									isExpired = true;
+								}
+							}
+						}
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					
+					if (isExpired) {
+						try (java.sql.PreparedStatement del = connection.prepareStatement("DELETE FROM TempAdmins WHERE username = ?")) {
+							del.setString(1, username);
+							del.executeUpdate();
+						} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					}
+					
+					return isActive;
+				}
+
+				public void submitAdminRequest(String username, String message) {
+					String query = "INSERT INTO AdminRequests (username, message, status, admin_notes, was_denied) VALUES (?, ?, 'Pending', '', 0)";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, username);
+						pstmt.setString(2, message);
+						pstmt.executeUpdate();
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+				}
+				
+				public void resubmitAdminRequest(int id, String message) {
+					String query = "UPDATE AdminRequests SET message = ?, status = 'Pending' WHERE id = ?";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, message);
+						pstmt.setInt(2, id);
+						pstmt.executeUpdate();
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+				}
+				
+				public void acceptAdminRequest(int id, String username, String notes) {
+					String query = "UPDATE AdminRequests SET status = 'Accepted', admin_notes = ? WHERE id = ?";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, notes);
+						pstmt.setInt(2, id);
+						pstmt.executeUpdate();
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					
+					long expiry = System.currentTimeMillis() + (24L * 60L * 60L * 1000L); // 24 hours
+					// Using standard INSERT OR REPLACE for maximum compatibility
+					String tq = "MERGE INTO TempAdmins (username, expiry_time) KEY (username) VALUES (?, ?)";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(tq)) {
+						pstmt.setString(1, username);
+						pstmt.setLong(2, expiry);
+						pstmt.executeUpdate();
+					} catch (java.sql.SQLException e) {
+						try (java.sql.PreparedStatement fallback = connection.prepareStatement("INSERT OR REPLACE INTO TempAdmins (username, expiry_time) VALUES (?, ?)")) {
+							fallback.setString(1, username);
+							fallback.setLong(2, expiry);
+							fallback.executeUpdate();
+						} catch (java.sql.SQLException ex) { ex.printStackTrace(); }
+					}
+				}
+				
+				public void denyAdminRequest(int id, String notes) {
+					String query = "UPDATE AdminRequests SET status = 'Denied', was_denied = 1, admin_notes = ? WHERE id = ?";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, notes);
+						pstmt.setInt(2, id);
+						pstmt.executeUpdate();
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+				}
+				
+				public void updateAdminRequestNotes(int id, String notes) {
+					String query = "UPDATE AdminRequests SET admin_notes = ? WHERE id = ?";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, notes);
+						pstmt.setInt(2, id);
+						pstmt.executeUpdate();
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+				}
+				
+				public java.util.List<String> getAdminRequests(String statusFilter, String usernameFilter) {
+					java.util.List<String> results = new java.util.ArrayList<>();
+					String query = "SELECT id, username, status, was_denied, message, admin_notes FROM AdminRequests WHERE 1=1";
+					if (statusFilter != null) {
+						if (statusFilter.equals("Closed")) query += " AND status != 'Pending'";
+						else query += " AND status = '" + statusFilter + "'";
+					}
+					if (usernameFilter != null) query += " AND username = '" + usernameFilter + "'";
+					
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query);
+						 java.sql.ResultSet rs = pstmt.executeQuery()) {
+						while (rs.next()) {
+							String req = rs.getInt("id") + "<SEP>" + 
+										 rs.getString("username") + "<SEP>" + 
+										 rs.getString("status") + "<SEP>" + 
+										 rs.getInt("was_denied") + "<SEP>" + 
+										 rs.getString("message") + "<SEP>" + 
+										 (rs.getString("admin_notes") == null ? "" : rs.getString("admin_notes"));
+							results.add(req);
+						}
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					return results;
+				}
+
+				public java.util.List<String> getListOfUsers() {
+					java.util.List<String> userList = new java.util.ArrayList<>();
+					String query = "SELECT userName, adminRole, newRole1, newRole2 FROM userDB";
+					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query);
+						 java.sql.ResultSet rs = pstmt.executeQuery()) {
+						while (rs.next()) {
+							String username = rs.getString("userName");
+							boolean adminRole = rs.getBoolean("adminRole");
+							boolean newRole1 = rs.getBoolean("newRole1");
+							boolean newRole2 = rs.getBoolean("newRole2");
+							String roleStr = (adminRole ? "Admin " : "") + (newRole1 ? "Staff " : "") + (newRole2 ? "Student " : "");
+							if (roleStr.isEmpty()) roleStr = "None";
+							userList.add(username + " - Roles: " + roleStr.trim());
+						}
+					} catch (java.sql.SQLException e) { e.printStackTrace(); }
+					return userList;
+				}
+
+				public String generateOTP(String roles, long durationMinutes) {
+					String p = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+					StringBuilder tempPwd = new StringBuilder();
+					for (int i = 0; i < 6; i++) {
+						tempPwd.append(p.charAt((int) (Math.random() * p.length())));
+					}
+					return tempPwd.toString();
 				}
 		}
