@@ -1611,4 +1611,54 @@ public class Database {
 						pstmt.setInt(1, id); pstmt.executeUpdate();
 					} catch (SQLException e) { e.printStackTrace(); }
 				}
+				
+				// --- EDIT & MODERATION OPERATIONS ---
+				public void updateReply(int id, String newContent) {
+					String query = "UPDATE Replies SET content = ? WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, newContent); pstmt.setInt(2, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				public void updateQuestionReply(int id, String newContent) {
+					String query = "UPDATE QuestionReplies SET content = ? WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, newContent); pstmt.setInt(2, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				public void updateQuestion(int id, String newTitle, String newTopic) {
+					String query = "UPDATE Questions SET title = ?, topic = ? WHERE id = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setString(1, newTitle); pstmt.setString(2, newTopic); pstmt.setInt(3, id); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				public void deleteAllRepliesForThread(int threadId) {
+					String query = "DELETE FROM Replies WHERE threadId = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, threadId); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				public void deleteAllRepliesForQuestion(int questionId) {
+					String query = "DELETE FROM QuestionReplies WHERE questionId = ?";
+					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+						pstmt.setInt(1, questionId); pstmt.executeUpdate();
+					} catch (SQLException e) { e.printStackTrace(); }
+				}
+				
+				public int getOrCreateGeneralThread() {
+					String query = "SELECT id FROM DiscussionThreads WHERE title = 'General'";
+					try (PreparedStatement pstmt = connection.prepareStatement(query);
+						 ResultSet rs = pstmt.executeQuery()) {
+						if (rs.next()) return rs.getInt("id");
+					} catch (SQLException e) {}
+					
+					try (PreparedStatement pstmt = connection.prepareStatement("INSERT INTO DiscussionThreads (title, topic, createdBy) VALUES ('General', 'General Discussion', 'System')")) {
+						pstmt.executeUpdate();
+					} catch (SQLException e) {}
+					
+					try (PreparedStatement pstmt = connection.prepareStatement(query);
+						 ResultSet rs = pstmt.executeQuery()) {
+						if (rs.next()) return rs.getInt("id");
+					} catch (SQLException e) {}
+					return 1;
+				}
 		}

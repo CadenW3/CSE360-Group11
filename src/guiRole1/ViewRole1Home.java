@@ -4,7 +4,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
-import javafx.scene.control.TreeItem;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
@@ -79,17 +78,21 @@ public class ViewRole1Home {
 	private static Scene theViewRole1HomeScene;	// The shared Scene each invocation populates
 	protected static final int theRole = 2;		// Admin: 1; Role1: 2; Role2: 3
 	
+	// Mode Toggle Buttons
+	protected static Button button_DiscussionsMode = new Button("Discussions");
+	protected static Button button_MessagesMode = new Button("Messages");
+
 	// UI Elements for Filtering
 	protected static Button button_FilterMyPosts = new Button("My Posts (0)");
 	protected static Button button_FilterUnread = new Button("Unread (0)");
+	protected static javafx.scene.control.TextField input_Filter = new javafx.scene.control.TextField();
 
 	// GUI Area 2: Discussion Thread Management UI Elements
 	protected static javafx.scene.control.TreeView<String> tree_Discussions = new javafx.scene.control.TreeView<>();
+	protected static javafx.scene.control.TreeView<String> tree_Messages = new javafx.scene.control.TreeView<>();
+	
 	protected static javafx.scene.control.ScrollPane scroll_ThreadDetails = new javafx.scene.control.ScrollPane();
 	protected static javafx.scene.layout.VBox box_ThreadDetails = new javafx.scene.layout.VBox();
-	
-	protected static Label label_StudentSelect = new Label("Message Student:");
-	protected static javafx.scene.control.ComboBox<String> dropdown_Students = new javafx.scene.control.ComboBox<>();
 		
 	protected static javafx.scene.control.TextField input_ReplyBox = new javafx.scene.control.TextField();
 	protected static Button button_SubmitReply = new Button("Post / Send");
@@ -181,9 +184,23 @@ public class ViewRole1Home {
 		// GUI Area 2
 		// --- GUI Area 2: STAFF DISCUSSIONS ---
 
+		// Mode Buttons Setup
+		setupButtonUI(button_DiscussionsMode, "Dialog", 14, 140, Pos.CENTER, 20, 105);
+		setupButtonUI(button_MessagesMode, "Dialog", 14, 140, Pos.CENTER, 170, 105);
+
 		// Filters
-		setupButtonUI(button_FilterMyPosts, "Dialog", 12, 100, Pos.CENTER, 20, 105);
-		setupButtonUI(button_FilterUnread, "Dialog", 12, 100, Pos.CENTER, 140, 105);
+		setupButtonUI(button_FilterMyPosts, "Dialog", 12, 100, Pos.CENTER, 20, 145);
+		setupButtonUI(button_FilterUnread, "Dialog", 12, 100, Pos.CENTER, 130, 145);
+
+		// Search Filter Input Box for Staff
+		input_Filter.setLayoutX(240);
+		input_Filter.setLayoutY(145);
+		input_Filter.setPrefWidth(130);
+		input_Filter.setVisible(false);
+		input_Filter.textProperty().addListener((obs, oldVal, newVal) -> {
+			ControllerRole1Home.currentFilterKeyword = newVal;
+			ControllerRole1Home.refreshDiscussionTree(tree_Discussions, theUser.getUserName(), button_FilterMyPosts, button_FilterUnread);
+		});
 
 		button_FilterMyPosts.setOnAction((_) -> {
 			ControllerRole1Home.filterMyPosts = !ControllerRole1Home.filterMyPosts;
@@ -198,18 +215,13 @@ public class ViewRole1Home {
 		});
 
 		tree_Discussions.setLayoutX(20);
-		tree_Discussions.setLayoutY(135);
-		tree_Discussions.setPrefSize(350, 275); 
+		tree_Discussions.setLayoutY(180);
+		tree_Discussions.setPrefSize(350, 270); 
 
-		setupLabelUI(label_StudentSelect, "Arial", 16, 150, Pos.BASELINE_LEFT, 20, 420);
-		dropdown_Students.setLayoutX(150);
-		dropdown_Students.setLayoutY(415);
-		dropdown_Students.setPrefWidth(220);
-		dropdown_Students.getItems().add("<Select a Student>");
-		try {
-			dropdown_Students.getItems().addAll(theDatabase.getStudentUsers());
-		} catch (Exception e) { e.printStackTrace(); }
-		dropdown_Students.getSelectionModel().select(0);
+		tree_Messages.setLayoutX(20);
+		tree_Messages.setLayoutY(145); 
+		tree_Messages.setPrefSize(350, 305); 
+		tree_Messages.setVisible(false);
 
 		// Thread Creation Box
 		input_NewTitle.setLayoutX(20);
@@ -238,74 +250,134 @@ public class ViewRole1Home {
 		input_ReplyBox.setLayoutX(390);
 		input_ReplyBox.setLayoutY(420);
 		input_ReplyBox.setPrefSize(300, 30);
-		input_ReplyBox.setPromptText("Type a reply here...");
+		input_ReplyBox.setPromptText("Type a reply (Defaults to General)...");
 
 		setupButtonUI(button_SubmitReply, "Dialog", 14, 80, Pos.CENTER, 700, 420);
 
-		// INITIAL STATE: Hide the reply box so it doesn't show at launch
-		input_ReplyBox.setVisible(false);
-		button_SubmitReply.setVisible(false);
+		input_ReplyBox.setVisible(true);
+		button_SubmitReply.setVisible(true);
+
+		// Mode Switching Actions
+		button_DiscussionsMode.setOnAction((_) -> {
+		    tree_Messages.setVisible(false);
+		    tree_Discussions.setVisible(true);
+		    button_FilterMyPosts.setVisible(true);
+		    button_FilterUnread.setVisible(true);
+		    input_NewTitle.setVisible(true);
+		    input_NewTopic.setVisible(true);
+		    button_CreateThread.setVisible(true);
+		    button_CreateQuestion.setVisible(true);
+		    
+		    String val = "";
+		    if(tree_Discussions.getSelectionModel().getSelectedItem() != null) val = tree_Discussions.getSelectionModel().getSelectedItem().getValue();
+		    if (val.equals("Discussions") || val.equals("Questions")) input_Filter.setVisible(true);
+		    
+		    box_ThreadDetails.getChildren().clear();
+		    input_ReplyBox.setVisible(true);
+		    button_SubmitReply.setVisible(true);
+		    input_ReplyBox.setPromptText("Type a reply (Defaults to General)...");
+		});
+
+		button_MessagesMode.setOnAction((_) -> {
+		    tree_Discussions.setVisible(false);
+		    button_FilterMyPosts.setVisible(false);
+		    button_FilterUnread.setVisible(false);
+		    input_Filter.setVisible(false);
+		    input_NewTitle.setVisible(false);
+		    input_NewTopic.setVisible(false);
+		    button_CreateThread.setVisible(false);
+		    button_CreateQuestion.setVisible(false);
+		    
+		    javafx.scene.control.TreeItem<String> rootMessages = new javafx.scene.control.TreeItem<>("Hidden");
+		    javafx.scene.control.TreeItem<String> staffNode = new javafx.scene.control.TreeItem<>("Staff");
+		    javafx.scene.control.TreeItem<String> studentsNode = new javafx.scene.control.TreeItem<>("Students");
+		    
+		    try {
+		        java.util.List<String> staff = theDatabase.getStaffUsers();
+		        java.util.List<String> students = theDatabase.getStudentUsers();
+		        students.removeAll(staff); // Removes duplicates, defaulting to staff
+		        staff.remove(theUser.getUserName());
+		        students.remove(theUser.getUserName());
+		        
+		        for (String s : staff) staffNode.getChildren().add(new javafx.scene.control.TreeItem<>(s));
+		        for (String s : students) studentsNode.getChildren().add(new javafx.scene.control.TreeItem<>(s));
+		    } catch (Exception e) {}
+		    
+		    rootMessages.getChildren().addAll(staffNode, studentsNode);
+		    tree_Messages.setRoot(rootMessages);
+		    tree_Messages.setShowRoot(false);
+		    
+		    tree_Messages.setVisible(true);
+		    box_ThreadDetails.getChildren().clear();
+		    input_ReplyBox.setVisible(false);
+		    button_SubmitReply.setVisible(false);
+		});
 
 		// Listeners
-				tree_Discussions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-					if (newVal != null) {
-						javafx.application.Platform.runLater(() -> {
-							dropdown_Students.getSelectionModel().select(0);
-						});
-						
-						input_ReplyBox.setVisible(true);
-						button_SubmitReply.setVisible(true);
-						input_ReplyBox.setPromptText("Type a reply here...");
-						
-						javafx.scene.control.TreeItem<String> current = newVal;
-						while (current != null && !current.getValue().startsWith("[Thread-") && !current.getValue().startsWith("[Question-")) {
-							current = current.getParent();
-						}
-						if (current != null) {
-							String val = current.getValue();
-							String type = val.startsWith("[Thread-") ? "Discussion" : "Question";
-							int id = Integer.parseInt(val.substring(val.indexOf("-") + 1, val.indexOf("]")));
-							
-							try {
-								theDatabase.markPostAsRead(theUser.getUserName(), id, type);
-							} catch (Exception e) { e.printStackTrace(); }
+		tree_Messages.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+		    if (newVal != null && newVal.isLeaf()) {
+		        String target = newVal.getValue();
+		        input_ReplyBox.setVisible(true);
+		        button_SubmitReply.setVisible(true);
+		        input_ReplyBox.setPromptText("Message " + target + "...");
+		        ControllerRole1Home.renderDirectMessages(theUser.getUserName(), target, box_ThreadDetails);
+		    } else {
+		        input_ReplyBox.setVisible(false);
+		        button_SubmitReply.setVisible(false);
+		    }
+		});
 
-							// FIX: Remove the (UNREAD) tag visually without rebuilding the entire tree!
-							if (newVal.getValue().contains("(UNREAD) ")) {
-							    newVal.setValue(newVal.getValue().replace("(UNREAD) ", ""));
-							}
+		tree_Discussions.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+			if (newVal != null) {
+				String val = newVal.getValue();
+				if (val.contains("(UNREAD) ")) {
+					newVal.setValue(val.replace("(UNREAD) ", ""));
+					val = newVal.getValue(); 
+				}
 
-							// We completely removed the ControllerRole1Home.refreshDiscussionTree(...) call from here.
-							ControllerRole1Home.renderPostView(id, type, box_ThreadDetails);
-						}
-					}
-				});
-
-		dropdown_Students.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-			if (newVal != null && !newVal.equals("<Select a Student>")) {
-				javafx.application.Platform.runLater(() -> {
-					tree_Discussions.getSelectionModel().clearSelection();
-				});
+				if (val.equals("Discussions") || val.equals("Questions")) {
+					input_Filter.setVisible(true);
+					input_Filter.setPromptText("Filter " + val);
+					ControllerRole1Home.currentFilterType = val.equals("Discussions") ? "Discussion" : "Question";
+				} else {
+					input_Filter.setVisible(false);
+				}
 				
 				input_ReplyBox.setVisible(true);
 				button_SubmitReply.setVisible(true);
-				input_ReplyBox.setPromptText("Message " + newVal + "...");
-				ControllerRole1Home.renderDirectMessages(theUser.getUserName(), newVal, box_ThreadDetails);
+				input_ReplyBox.setPromptText("Type a reply here...");
+				
+				javafx.scene.control.TreeItem<String> current = newVal;
+				while (current != null && !current.getValue().startsWith("[Thread-") && !current.getValue().startsWith("[Question-")) {
+					current = current.getParent();
+				}
+				if (current != null) {
+					String type = current.getValue().startsWith("[Thread-") ? "Discussion" : "Question";
+					int id = Integer.parseInt(current.getValue().substring(current.getValue().indexOf("-") + 1, current.getValue().indexOf("]")));
+					
+					try {
+						theDatabase.markPostAsRead(theUser.getUserName(), id, type);
+					} catch (Exception e) { e.printStackTrace(); }
+
+					ControllerRole1Home.renderPostView(id, type, box_ThreadDetails);
+				}
 			}
 		});
 
 		// Buttons
 		button_CreateThread.setOnAction((_) -> {
-			if (!input_NewTitle.getText().isEmpty() && !input_NewTopic.getText().isEmpty()) {
-				ControllerRole1Home.createNewThread(input_NewTitle.getText(), input_NewTopic.getText(), theUser.getUserName(), tree_Discussions, button_FilterMyPosts, button_FilterUnread);
+			String title = input_NewTitle.getText().isEmpty() ? "General" : input_NewTitle.getText();
+			if (!input_NewTopic.getText().isEmpty()) {
+				ControllerRole1Home.createNewThread(title, input_NewTopic.getText(), theUser.getUserName(), tree_Discussions, button_FilterMyPosts, button_FilterUnread);
 				input_NewTitle.clear();
 				input_NewTopic.clear();
 			}
 		});
 
 		button_CreateQuestion.setOnAction((_) -> {
-			if (!input_NewTitle.getText().isEmpty() && !input_NewTopic.getText().isEmpty()) {
-				ControllerRole1Home.createNewQuestion(input_NewTitle.getText(), input_NewTopic.getText(), theUser.getUserName(), tree_Discussions, button_FilterMyPosts, button_FilterUnread);
+			String title = input_NewTitle.getText().isEmpty() ? "General" : input_NewTitle.getText();
+			if (!input_NewTopic.getText().isEmpty()) {
+				ControllerRole1Home.createNewQuestion(title, input_NewTopic.getText(), theUser.getUserName(), tree_Discussions, button_FilterMyPosts, button_FilterUnread);
 				input_NewTitle.clear();
 				input_NewTopic.clear();
 			}
@@ -315,16 +387,20 @@ public class ViewRole1Home {
 			String messageText = input_ReplyBox.getText();
 			if (messageText.isEmpty()) return;
 
-			String selectedStudent = dropdown_Students.getSelectionModel().getSelectedItem();
-			if (selectedStudent != null && !selectedStudent.equals("<Select a Student>")) {
-				ControllerRole1Home.executeDirectMessageDB(theUser.getUserName(), selectedStudent, messageText, box_ThreadDetails);
-				input_ReplyBox.clear();
+			if (tree_Messages.isVisible()) {
+				javafx.scene.control.TreeItem<String> target = tree_Messages.getSelectionModel().getSelectedItem();
+				if (target != null && target.isLeaf()) {
+					ControllerRole1Home.executeDirectMessageDB(theUser.getUserName(), target.getValue(), messageText, box_ThreadDetails);
+					input_ReplyBox.clear();
+				}
 				return;
 			}
 			
 			javafx.scene.control.TreeItem<String> selectedThread = tree_Discussions.getSelectionModel().getSelectedItem();
-			if (selectedThread != null) {
-				int id = 0, parentReplyId = 0;
+			int id = 0, parentReplyId = 0;
+			String type = "Discussion";
+			
+			if (selectedThread != null && !selectedThread.getValue().equals("Discussions") && !selectedThread.getValue().equals("Questions")) {
 				String val = selectedThread.getValue();
 				javafx.scene.control.TreeItem<String> current = selectedThread;
 				while (current != null && !current.getValue().startsWith("[Thread-") && !current.getValue().startsWith("[Question-")) { current = current.getParent(); }
@@ -333,11 +409,14 @@ public class ViewRole1Home {
 				if (val.startsWith("[Post-")) parentReplyId = Integer.parseInt(val.substring(6, val.indexOf("]")));
 				else if (val.startsWith("[Reply-")) parentReplyId = Integer.parseInt(val.substring(7, val.indexOf("]")));
 				
-				if (id > 0) {
-					String type = current.getValue().startsWith("[Thread-") ? "Discussion" : "Question";
-					ControllerRole1Home.executeReplyDB(id, parentReplyId, type, messageText, theUser.getUserName(), tree_Discussions, box_ThreadDetails, button_FilterMyPosts, button_FilterUnread);
-					input_ReplyBox.clear();
-				}
+				if (current != null) type = current.getValue().startsWith("[Thread-") ? "Discussion" : "Question";
+			} else {
+				id = theDatabase.getOrCreateGeneralThread();
+			}
+			
+			if (id > 0) {
+				ControllerRole1Home.executeReplyDB(id, parentReplyId, type, messageText, theUser.getUserName(), tree_Discussions, box_ThreadDetails, button_FilterMyPosts, button_FilterUnread);
+				input_ReplyBox.clear();
 			}
 		});
 		
@@ -355,7 +434,7 @@ public class ViewRole1Home {
 		theRootPane.getChildren().clear(); // Fixes duplicate children crash
          theRootPane.getChildren().addAll(
  			label_PageTitle, label_UserDetails, button_UpdateThisUser, line_Separator1,
- 			button_FilterMyPosts, button_FilterUnread, tree_Discussions, label_StudentSelect, dropdown_Students,
+ 			button_DiscussionsMode, button_MessagesMode, button_FilterMyPosts, button_FilterUnread, input_Filter, tree_Discussions, tree_Messages,
  			input_NewTitle, input_NewTopic, button_CreateThread, button_CreateQuestion,
  			scroll_ThreadDetails, input_ReplyBox, button_SubmitReply,
  	        line_Separator4, button_Logout, button_Quit);
