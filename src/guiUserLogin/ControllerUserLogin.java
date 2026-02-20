@@ -33,10 +33,8 @@ public class ControllerUserLogin {
 
 	*/
 	
-	// FIX: Directly link to the main database to prevent NullPointerException
 	private static Database theDatabase = applicationMain.FoundationsMain.database;
-	
-	private static Stage theStage;			// This is the stage that is used to display the scene
+	private static Stage theStage;			
 	
 	/**
 	 * Default constructor is not used.
@@ -63,12 +61,9 @@ public class ControllerUserLogin {
 	 */
 	protected static void doLogin(Stage ts) {
 		theStage = ts;
-		// Added .trim() to ensure invisible spaces from copy-pasting the OTP are completely ignored
 		String username = ViewUserLogin.text_Username.getText().trim();
 		String password = ViewUserLogin.text_Password.getText().trim();
-    	boolean loginResult = false;
     	
-    	// Validate the username format before checking the database.
     	String usernameError = userNameRecognizerTestbed.UserNameRecognizer.checkForValidUserName(username);
     	
     	if (!usernameError.isEmpty()) {
@@ -77,12 +72,10 @@ public class ControllerUserLogin {
     	    return;
     	}
 
-    	// Double check database connection is alive
     	if (theDatabase == null) {
     		theDatabase = applicationMain.FoundationsMain.database;
     	}
 
-		// Fetch the user and verify the username
      	if (theDatabase.getUserAccountDetails(username) == false) {
     		ViewUserLogin.alertUsernamePasswordError.setContentText(
     				"Incorrect username/password. Try again!");
@@ -90,7 +83,6 @@ public class ControllerUserLogin {
     		return;
     	}
 		
-		// Check to see that the login password matches the account password
     	String actualPassword = theDatabase.getCurrentPassword();
     	
     	if (password.compareTo(actualPassword) != 0) {
@@ -100,7 +92,6 @@ public class ControllerUserLogin {
     		return;
     	}
 
-    	// Check if the account's OTP is expired or has already been used
     	if (theDatabase.isAccountExpired(username)) {
     		ViewUserLogin.alertUsernamePasswordError.setContentText(
     				"Your One-Time Password has expired or already been used.\nPlease request a new one.");
@@ -108,73 +99,50 @@ public class ControllerUserLogin {
     		return;
     	}
 
-    	// FORCE PASSWORD RESET FOR OTP USERS:
     	if (theDatabase.isUsingOTP(username)) {
     		boolean resetSuccess = forcePasswordReset(username);
     		if (resetSuccess) {
-    			// They successfully entered a new password. The DB is updated.
-    			// Burn the OTP just to be doubly safe.
     			theDatabase.burnOTP(username);
-    			
-    			// Alert them to log back in
     			ViewUserLogin.alertUsernamePasswordError.setTitle("Password Reset Successful");
     			ViewUserLogin.alertUsernamePasswordError.setHeaderText("Success");
     			ViewUserLogin.alertUsernamePasswordError.setContentText("Your password has been updated.\nPlease log in again with your new password.");
     			ViewUserLogin.alertUsernamePasswordError.showAndWait();
-    			
-    			// Clear the login fields so they have to type the new password
     			ViewUserLogin.text_Username.setText("");
     			ViewUserLogin.text_Password.setText("");
     		}
-    		return; // Halt the login process. They must log in again with the newly created password!
+    		return;
     	}
 
-    	// BURN THE OTP: If the password was correct, immediately expire it if it was an OTP.
     	theDatabase.burnOTP(username);
-    	// Establish this user's details
+    	
     	User user = new User(username, password, theDatabase.getCurrentFirstName(), 
     	        theDatabase.getCurrentMiddleName(), theDatabase.getCurrentLastName(), 
     	        theDatabase.getCurrentPreferredFirstName(), theDatabase.getCurrentEmailAddress(), 
     	        theDatabase.getCurrentAdminRole(), 
     	        theDatabase.getCurrentNewRole1(), theDatabase.getCurrentNewRole2());
 
-    	// --- REPLACE EVERYTHING AFTER THIS POINT IN THE METHOD WITH THE FOLLOWING ---
-
-    	// Get the role selected by the user from the UI
-    	// See which home page dispatch to use based on the number of roles
-    		int numberOfRoles = theDatabase.getNumberOfRoles(user);		
+    	int numberOfRoles = theDatabase.getNumberOfRoles(user);		
     			
-    		if (numberOfRoles == 1) {
-    			// Single Account Home Page - route directly to their specific page
-    			if (user.getAdminRole()) {
-    				if (theDatabase.loginAdmin(user)) {
-    					guiAdminHome.ViewAdminHome.displayAdminHome(theStage, user);
-   					}
-   				} else if (user.getNewRole1()) {
-   					if (theDatabase.loginRole1(user)) {
-   						guiRole1.ViewRole1Home.displayRole1Home(theStage, user);
-    				}
-    			} else if (user.getNewRole2()) {
-    				if (theDatabase.loginRole2(user)) {
-   						guiRole2.ViewRole2Home.displayRole2Home(theStage, user);
-   					}
-   				} else {
-   					System.out.println("***** UserLogin goToUserHome request has an invalid role");
-    				}
-    			} else if (numberOfRoles > 1) {
-    				// Multiple Account Home Page - The user chooses which role to play AFTER logging in
-    				guiMultipleRoleDispatch.ViewMultipleRoleDispatch.
-    				displayMultipleRoleDispatch(theStage, user);
+    	if (numberOfRoles == 1) {
+    		if (user.getAdminRole()) {
+    			guiAdminHome.ViewAdminHome.displayAdminHome(theStage, user);
+   			} else if (user.getNewRole1()) {
+   				guiRole1.ViewRole1Home.displayRole1Home(theStage, user);
+    		} else if (user.getNewRole2()) {
+   				guiRole2.ViewRole2Home.displayRole2Home(theStage, user);
    			} else {
-   				// This catches users who have 0 roles
-   				ViewUserLogin.alertUsernamePasswordError.setTitle("Login Error");
-   				ViewUserLogin.alertUsernamePasswordError.setHeaderText("No Roles Assigned");
-    			ViewUserLogin.alertUsernamePasswordError.setContentText("This account exists but has no valid roles assigned.\nPlease contact an Admin.");
-    			ViewUserLogin.alertUsernamePasswordError.showAndWait();
-   			}
+   				System.out.println("***** UserLogin goToUserHome request has an invalid role");
+    		}
+    	} else if (numberOfRoles > 1) {
+    		guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(theStage, user);
+   		} else {
+   			ViewUserLogin.alertUsernamePasswordError.setTitle("Login Error");
+   			ViewUserLogin.alertUsernamePasswordError.setHeaderText("No Roles Assigned");
+    		ViewUserLogin.alertUsernamePasswordError.setContentText("This account exists but has no valid roles assigned.\nPlease contact an Admin.");
+    		ViewUserLogin.alertUsernamePasswordError.showAndWait();
    		}
+   	}
 	
-		
 	/**********
 	 * <p> Method: setup() </p>
 	 * * <p> Description: This method is called to reset the page and then populate it with new
@@ -184,7 +152,6 @@ public class ControllerUserLogin {
 		guiNewAccount.ViewNewAccount.displayNewAccount(theStage, invitationCode);
 	}
 
-	
 	/**********
 	 * <p> Method: public performQuit() </p>
 	 * * <p> Description: This method is called when the user has clicked on the Quit button.  Doing
@@ -208,10 +175,8 @@ public class ControllerUserLogin {
 		javafx.scene.control.PasswordField pwd2 = new javafx.scene.control.PasswordField();
 		pwd2.setPromptText("Confirm New Password");
 		
-		// Add real-time password strength label
 		javafx.scene.control.Label strengthLabel = new javafx.scene.control.Label();
 		
-		// Real-time listener for the password field
 		pwd1.textProperty().addListener((observable, oldValue, newValue) -> {
 			if (newValue.isEmpty()) {
 				strengthLabel.setText("");
@@ -238,7 +203,6 @@ public class ControllerUserLogin {
 				new javafx.scene.control.Label("Confirm new password:"), pwd2);
 		dialog.getDialogPane().setContent(vbox);
 		
-		// Ensure the passwords follow the rules and match before allowing them to update
 		final javafx.scene.Node updateBtn = dialog.getDialogPane().lookupButton(updateBtnType);
 		updateBtn.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
 			String pass1 = pwd1.getText();
@@ -248,11 +212,11 @@ public class ControllerUserLogin {
 			if (!error.isEmpty()) {
 				javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, error);
 				alert.showAndWait();
-				event.consume(); // Prevent dialog from closing
+				event.consume(); 
 			} else if (!pass1.equals(pass2)) {
 				javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR, "Passwords do not match!");
 				alert.showAndWait();
-				event.consume(); // Prevent dialog from closing
+				event.consume(); 
 			}
 		});
 		
@@ -268,10 +232,9 @@ public class ControllerUserLogin {
 			theDatabase.updatePassword(username, result.get());
 			return true;
 		}
-		return false; // User hit cancel
+		return false; 
 	}
 
-	// Helper method to validate password rules (same as New Account rules)
 	private static String checkPassword(String password) {
 		if (password.length() < 12) return "Password must be at least 12 characters";
 		if (password.length() > 16) return "Password must be less than 16 characters";

@@ -4,6 +4,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TreeItem;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Line;
 import javafx.scene.text.Font;
@@ -438,6 +439,39 @@ public class ViewRole1Home {
  			input_NewTitle, input_NewTopic, button_CreateThread, button_CreateQuestion,
  			scroll_ThreadDetails, input_ReplyBox, button_SubmitReply,
  	        line_Separator4, button_Logout, button_Quit);
+
+		// --- DYNAMIC UI SCALING ---
+		theRootPane.widthProperty().addListener((obs, oldVal, newVal) -> {
+			double w = newVal.doubleValue();
+			line_Separator1.setEndX(w - 20);
+			line_Separator4.setEndX(w - 20);
+			scroll_ThreadDetails.setPrefWidth(w - 410);
+			box_ThreadDetails.setPrefWidth(w - 430);
+			button_SubmitReply.setLayoutX(w - 100);
+			input_ReplyBox.setPrefWidth(w - 500);
+			button_UpdateThisUser.setLayoutX(w - 190);
+			button_Quit.setLayoutX(w - 280); 
+		});
+
+		theRootPane.heightProperty().addListener((obs, oldVal, newVal) -> {
+			double h = newVal.doubleValue();
+			line_Separator4.setStartY(h - 75);
+			line_Separator4.setEndY(h - 75);
+			button_Logout.setLayoutY(h - 60);
+			button_Quit.setLayoutY(h - 60);
+			
+			tree_Discussions.setPrefHeight(h - 330);
+			tree_Messages.setPrefHeight(h - 295);
+			scroll_ThreadDetails.setPrefHeight(h - 325);
+			
+			input_ReplyBox.setLayoutY(h - 180);
+			button_SubmitReply.setLayoutY(h - 180);
+			
+			input_NewTitle.setLayoutY(h - 140);
+			input_NewTopic.setLayoutY(h - 140);
+			button_CreateThread.setLayoutY(h - 140);
+			button_CreateQuestion.setLayoutY(h - 105);
+		});
 	}
 	
 	

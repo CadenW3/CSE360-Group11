@@ -39,8 +39,13 @@ public class ControllerRole2Home {
 	 */
 	public ControllerRole2Home() {
 	}
+	
+	private static boolean isUserOwner(String postCreator, String currentUser) {
+		if (postCreator == null || currentUser == null) return false;
+		if (postCreator.trim().isEmpty() || currentUser.trim().isEmpty()) return false;
+		return postCreator.trim().equalsIgnoreCase(currentUser.trim());
+	}
 
-	// Helper method: Recursively cleans up any soft-deleted posts that no longer have active replies under them
 	private static java.util.List<String> cleanupOrphanedDeletes(java.util.List<String> replies, String type) {
 		boolean changed = true;
 		while (changed) {
@@ -60,18 +65,20 @@ public class ControllerRole2Home {
 					}
 				}
 				
-				// If it's deleted and has no children left, permanently wipe it from the DB
 				if (content.equals("[This post was deleted.]") && !hasChildren) {
 					try {
-						if (type.equals("Discussion")) theDatabase.deleteReply(rId);
-						else theDatabase.deleteQuestionReply(rId);
+						if (type.equals("Discussion")) {
+							theDatabase.deleteReply(rId);
+						} else {
+							theDatabase.deleteQuestionReply(rId);
+						}
 					} catch (Exception e) { e.printStackTrace(); }
-					changed = true; // Flag change to re-check if its parent is now empty
+					changed = true; 
 				} else {
 					toKeep.add(replyData);
 				}
 			}
-			replies = toKeep; // Update list for next pass
+			replies = toKeep; 
 		}
 		return replies;
 	}
@@ -80,6 +87,8 @@ public class ControllerRole2Home {
 		try {
 			int myPostsCount = 0;
 			int unreadCount = 0;
+			
+			theDatabase.getOrCreateGeneralThread(); 
 
 			javafx.scene.control.TreeItem<String> hiddenRoot = new javafx.scene.control.TreeItem<>("Hidden");
 			javafx.scene.control.TreeItem<String> discussionsRoot = new javafx.scene.control.TreeItem<>("Discussions");
@@ -91,7 +100,13 @@ public class ControllerRole2Home {
 				if (tParts.length < 4) continue;
 				int id = Integer.parseInt(tParts[0].trim());
 				
-				// Search Keyword Filter
+				java.util.List<String> replies = cleanupOrphanedDeletes(theDatabase.getRepliesForThread(id), "Discussion");
+				
+				if (tParts[1].trim().equals("[Deleted]") && replies.isEmpty()) {
+					try { theDatabase.deleteThread(id); } catch(Exception e) {}
+					continue; 
+				}
+				
 				if (currentFilterType.equals("Discussion") && !currentFilterKeyword.isEmpty()) {
 					if (!tParts[1].toLowerCase().contains(currentFilterKeyword.toLowerCase()) && 
 						!tParts[2].toLowerCase().contains(currentFilterKeyword.toLowerCase())) {
@@ -99,7 +114,7 @@ public class ControllerRole2Home {
 					}
 				}
 				
-				boolean isMine = tParts[3].trim().equals(userName);
+				boolean isMine = isUserOwner(tParts[3], userName);
 				boolean isRead = theDatabase.hasReadPost(userName, id, "Discussion");
 				if (isMine) myPostsCount++; if (!isRead) unreadCount++;
 
@@ -109,11 +124,7 @@ public class ControllerRole2Home {
 				String display = "[Thread-" + id + "] " + (!isRead ? "(UNREAD) " : "") + tParts[1].trim();
 				javafx.scene.control.TreeItem<String> node = new javafx.scene.control.TreeItem<>(display);
 				
-				java.util.List<String> replies = theDatabase.getRepliesForThread(id);
-				replies = cleanupOrphanedDeletes(replies, "Discussion"); // Clean up old deleted posts
-
 				java.util.Map<Integer, javafx.scene.control.TreeItem<String>> rNodes = new java.util.HashMap<>();
-				
 				int postCounter = 1;
 				java.util.Map<Integer, Integer> replyCounters = new java.util.HashMap<>();
 				
@@ -150,7 +161,13 @@ public class ControllerRole2Home {
 				if (qParts.length < 4) continue;
 				int id = Integer.parseInt(qParts[0].trim());
 				
-				// Search Keyword Filter
+				java.util.List<String> replies = cleanupOrphanedDeletes(theDatabase.getRepliesForQuestion(id), "Question");
+				
+				if (qParts[1].trim().equals("[Deleted]") && replies.isEmpty()) {
+					try { theDatabase.deleteQuestion(id); } catch(Exception e) {}
+					continue; 
+				}
+				
 				if (currentFilterType.equals("Question") && !currentFilterKeyword.isEmpty()) {
 					if (!qParts[1].toLowerCase().contains(currentFilterKeyword.toLowerCase()) && 
 						!qParts[2].toLowerCase().contains(currentFilterKeyword.toLowerCase())) {
@@ -158,7 +175,7 @@ public class ControllerRole2Home {
 					}
 				}
 				
-				boolean isMine = qParts[3].trim().equals(userName);
+				boolean isMine = isUserOwner(qParts[3], userName);
 				boolean isRead = theDatabase.hasReadPost(userName, id, "Question");
 				if (isMine) myPostsCount++; if (!isRead) unreadCount++;
 
@@ -168,11 +185,7 @@ public class ControllerRole2Home {
 				String display = "[Question-" + id + "] " + (!isRead ? "(UNREAD) " : "") + qParts[1].trim();
 				javafx.scene.control.TreeItem<String> node = new javafx.scene.control.TreeItem<>(display);
 				
-				java.util.List<String> replies = theDatabase.getRepliesForQuestion(id);
-				replies = cleanupOrphanedDeletes(replies, "Question"); // Clean up old deleted posts
-				
 				java.util.Map<Integer, javafx.scene.control.TreeItem<String>> rNodes = new java.util.HashMap<>();
-				
 				int postCounter = 1;
 				java.util.Map<Integer, Integer> replyCounters = new java.util.HashMap<>();
 				
@@ -224,7 +237,7 @@ public class ControllerRole2Home {
 			String currentUser = ViewRole2Home.theUser.getUserName();
 			
 			java.util.List<String> replies = (type.equals("Discussion")) ? theDatabase.getRepliesForThread(id) : theDatabase.getRepliesForQuestion(id);
-			replies = cleanupOrphanedDeletes(replies, type); // Clean up old deleted posts
+			replies = cleanupOrphanedDeletes(replies, type); 
 
 			javafx.scene.layout.VBox threadBox = new javafx.scene.layout.VBox(8);
 			threadBox.setStyle("-fx-background-color: #f4f6f8; -fx-padding: 15; -fx-border-color: #d1d5db; -fx-border-width: 0 0 2 0;");
@@ -245,6 +258,7 @@ public class ControllerRole2Home {
 			javafx.scene.control.Label lblTopic = new javafx.scene.control.Label(tParts[2].trim());
 			lblTopic.setFont(javafx.scene.text.Font.font("Arial", 16));
 			lblTopic.setWrapText(true);
+			lblTopic.prefWidthProperty().bind(container.widthProperty().subtract(30)); 
 			
 			threadBox.getChildren().addAll(headerLayout, lblTopic);
 			container.getChildren().add(threadBox);
@@ -279,9 +293,9 @@ public class ControllerRole2Home {
 				rLblCreator.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 14));
 				rHeaderLayout.getChildren().add(rLblCreator);
 				
-				// Add Delete Button to Reply if Owner
-				if (rParts[3].trim().equals(currentUser) && !rParts[2].trim().equals("[This post was deleted.]")) {
-					// Check if this reply has replies pointing to it using a temp variable first
+				boolean isMyReply = isUserOwner(rParts[3], currentUser);
+				
+				if (isMyReply && !rParts[2].trim().equals("[This post was deleted.]")) {
 					boolean tempHasChildren = false;
 					for (String checkR : replies) {
 						if (Integer.parseInt(checkR.split("\\|")[1].trim()) == rId) {
@@ -290,7 +304,6 @@ public class ControllerRole2Home {
 						}
 					}
 					
-					// Make it effectively final for the lambda expression
 					final boolean hasChildren = tempHasChildren;
 					
 					javafx.scene.control.Button btnDelete = new javafx.scene.control.Button("Delete");
@@ -301,13 +314,14 @@ public class ControllerRole2Home {
 							if (response == javafx.scene.control.ButtonType.YES) {
 								try {
 									if (hasChildren) {
-										// Soft delete
 										if (type.equals("Discussion")) theDatabase.softDeleteReply(rId);
 										else theDatabase.softDeleteQuestionReply(rId);
 									} else {
-										// Hard Delete
-										if (type.equals("Discussion")) theDatabase.deleteReply(rId);
-										else theDatabase.deleteQuestionReply(rId);
+										if (type.equals("Discussion")) {
+											theDatabase.deleteReply(rId);
+										} else {
+											theDatabase.deleteQuestionReply(rId);
+										}
 									}
 								} catch (Exception ex) { ex.printStackTrace(); }
 								
@@ -322,11 +336,11 @@ public class ControllerRole2Home {
 				javafx.scene.control.Label rLblContent = new javafx.scene.control.Label(rParts[2].trim());
 				rLblContent.setFont(javafx.scene.text.Font.font("Arial", 15));
 				rLblContent.setWrapText(true);
+				rLblContent.prefWidthProperty().bind(container.widthProperty().subtract(indent + 40));
 				
 				replyBox.getChildren().addAll(rHeaderLayout, rLblContent);
 
-				// --- GRADING BADGE (Private to this student) ---
-				if (type.equals("Discussion") && rParts[3].trim().equals(currentUser)) {
+				if (type.equals("Discussion") && isMyReply) {
 					javafx.scene.layout.HBox gradeBox = new javafx.scene.layout.HBox();
 					gradeBox.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
 					gradeBox.setStyle("-fx-padding: 5 10; -fx-background-radius: 15;");
@@ -398,6 +412,7 @@ public class ControllerRole2Home {
 				javafx.scene.control.Label lblContent = new javafx.scene.control.Label(parts[1].trim());
 				lblContent.setFont(javafx.scene.text.Font.font("Arial", 15));
 				lblContent.setWrapText(true);
+				lblContent.prefWidthProperty().bind(container.widthProperty().subtract(60));
 				msgBox.getChildren().addAll(lblCreator, lblContent);
 				container.getChildren().add(msgBox);
 			}

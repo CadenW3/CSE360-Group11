@@ -8,6 +8,7 @@ import javafx.stage.Stage;
 
 import java.util.Optional;
 import database.Database;
+
 public class ControllerUserUpdate {
 	/*-********************************************************************************************
 
@@ -36,41 +37,26 @@ public class ControllerUserUpdate {
 	 * * @param theStage specifies the JavaFX Stage for next next GUI page and it's methods
 	 * * @param theUser specifies the user so we go to the right page and so the right information
 	 */
-protected static void goToUserHomePage(Stage theStage, User theUser) {
+	protected static void goToUserHomePage(Stage theStage, User theUser) {
+		database.Database db = applicationMain.FoundationsMain.database;
+		int numRoles = db.getNumberOfRoles(theUser);
 		
-		// Determine which page to go to based on the User's roles
-		int theRole;
-		
-		if (theUser.getAdminRole()) {
-			theRole = 1; // Admin Home
-		} else if (theUser.getNewRole1()) {
-			theRole = 2; // Role1 Home
-		} else if (theUser.getNewRole2()) {
-			theRole = 3; // Role2 Home
+		if (numRoles == 1) {
+			if (theUser.getAdminRole()) guiAdminHome.ViewAdminHome.displayAdminHome(theStage, theUser);
+			else if (theUser.getNewRole1()) guiRole1.ViewRole1Home.displayRole1Home(theStage, theUser);
+			else if (theUser.getNewRole2()) guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
 		} else {
-			// Fallback to the global state if no role is found
-			theRole = applicationMain.FoundationsMain.activeHomePage;
-		}
-
-		// Update the global active page so the system knows which context the user is in
-		applicationMain.FoundationsMain.activeHomePage = theRole;
-
-		// Navigate to the correct page
-		switch (theRole) {
-		case 1:
-			guiAdminHome.ViewAdminHome.displayAdminHome(theStage, theUser);
-			break;
-		case 2:
-			guiRole1.ViewRole1Home.displayRole1Home(theStage, theUser);
-			break;
-		case 3:
-			guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
-			break;
-		default: 
-			System.out.println("*** ERROR *** UserUpdate has an invalid role.");
-			System.exit(0);
+			int active = applicationMain.FoundationsMain.activeHomePage;
+			
+			if (active == 1 && theUser.getAdminRole()) guiAdminHome.ViewAdminHome.displayAdminHome(theStage, theUser);
+			else if (active == 2 && theUser.getNewRole1()) guiRole1.ViewRole1Home.displayRole1Home(theStage, theUser);
+			else if (active == 3 && theUser.getNewRole2()) guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
+			else {
+				guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(theStage, theUser);
+			}
 		}
  	}
+	
 	protected static void performUpdateFirstName(User theUser) {
 		TextInputDialog dialog = new TextInputDialog(theUser.getFirstName());
 		dialog.setTitle("Update First Name");
@@ -78,7 +64,6 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 		dialog.setContentText("Please enter your First Name:");
 		Optional<String> result = dialog.showAndWait();
 		if (result.isPresent()){
-			// Logic to update First Name in DB would go here
 			System.out.println("First Name Updated to: " + result.get());
 		}
 	}
@@ -90,7 +75,6 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 		dialog.setContentText("Please enter your Middle Name:");
 		Optional<String> result = dialog.showAndWait();
 		if (result.isPresent()){
-			// Logic to update Middle Name in DB would go here
 			System.out.println("Middle Name Updated to: " + result.get());
 		}
 	}
@@ -102,7 +86,6 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 		dialog.setContentText("Please enter your Last Name:");
 		Optional<String> result = dialog.showAndWait();
 		if (result.isPresent()){
-			// Logic to update Last Name in DB would go here
 			System.out.println("Last Name Updated to: " + result.get());
 		}
 	}
@@ -114,7 +97,6 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 		dialog.setContentText("Please enter your Preferred First Name:");
 		Optional<String> result = dialog.showAndWait();
 		if (result.isPresent()){
-			// Logic to update Preferred Name in DB would go here
 			System.out.println("Preferred Name Updated to: " + result.get());
 		}
 	}
@@ -126,7 +108,6 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 		dialog.setContentText("Please enter your Email Address:");
 		Optional<String> result = dialog.showAndWait();
 		if (result.isPresent()){
-			// Logic to update Email in DB would go here
 			System.out.println("Email Updated to: " + result.get());
 		}
 	}
@@ -140,7 +121,6 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 	 * * @param theUser The current user object
 	 */
 	protected static String performUpdatePassword(User theUser) {
-		// 1. Ask for new password
 		TextInputDialog dialog = new TextInputDialog("");
 		dialog.setTitle("Change Password");
 		dialog.setHeaderText("Set New Password");
@@ -151,7 +131,6 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 			String newPass = result.get();
 			if (newPass.isEmpty()) return null;
 			
-			// Validate Password
 			String error = checkPassword(newPass);
 			if (!error.isEmpty()) {
 				Alert alert = new Alert(AlertType.ERROR);
@@ -161,7 +140,6 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 				return null;
 			}
 			
-			// 2. Confirm new password
 			TextInputDialog confirmDialog = new TextInputDialog("");
 			confirmDialog.setTitle("Confirm Password");
 			confirmDialog.setHeaderText("Confirm New Password");
@@ -178,7 +156,6 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 					return null;
 				}
 				
-				// 3. Update Database (Overwrites the OTP)
 				try {
 					Database db = applicationMain.FoundationsMain.database;
 					db.resetPassword(theUser.getUserName(), newPass);
@@ -196,32 +173,21 @@ protected static void goToUserHomePage(Stage theStage, User theUser) {
 		return null;
 	}
 	
-	// Helper method to validate password rules
 	private static String checkPassword(String password) {
-		if (password.length() < 12)
-			return "Password must be at least 12 characters";
-		if (password.length() > 16)
-			return "Password must be less than 16 characters";
-
-		// New Check: First character must be a letter
-		if (!Character.isLetter(password.charAt(0))) {
-			return "Password must start with a letter (a-z or A-Z).";
-		}
+		if (password.length() < 12) return "Password must be at least 12 characters";
+		if (password.length() > 16) return "Password must be less than 16 characters";
+		if (!Character.isLetter(password.charAt(0))) return "Password must start with a letter (a-z or A-Z).";
 
 		int numberCount = 0;
 		int specialCount = 0;
 
 		for (char c : password.toCharArray()) {
-			if (Character.isDigit(c))
-				numberCount++;
-			else if (!Character.isLetterOrDigit(c))
-				specialCount++;
+			if (Character.isDigit(c)) numberCount++;
+			else if (!Character.isLetterOrDigit(c)) specialCount++;
 		}
 
-		if (numberCount < 2)
-			return "Weak Password. Please use at least 2 numbers";
-		if (specialCount < 1)
-			return "Weak Password. Please use at least 1 special character";
+		if (numberCount < 2) return "Weak Password. Please use at least 2 numbers";
+		if (specialCount < 1) return "Weak Password. Please use at least 1 special character";
 
 		return "";
 	}

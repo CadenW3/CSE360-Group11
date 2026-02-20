@@ -59,8 +59,11 @@ public class ControllerRole1Home {
 				
 				if (content.equals("[This post was deleted.]") && !hasChildren) {
 					try {
-						if (type.equals("Discussion")) theDatabase.deleteReply(rId);
-						else theDatabase.deleteQuestionReply(rId);
+						if (type.equals("Discussion")) {
+							theDatabase.deleteReply(rId);
+						} else {
+							theDatabase.deleteQuestionReply(rId);
+						}
 					} catch (Exception e) { e.printStackTrace(); }
 					changed = true; 
 				} else {
@@ -77,7 +80,7 @@ public class ControllerRole1Home {
 			int myPostsCount = 0;
 			int unreadCount = 0;
 			
-			theDatabase.getOrCreateGeneralThread(); // Guarantee General exists
+			theDatabase.getOrCreateGeneralThread();
 
 			javafx.scene.control.TreeItem<String> hiddenRoot = new javafx.scene.control.TreeItem<>("Hidden");
 			javafx.scene.control.TreeItem<String> discussionsRoot = new javafx.scene.control.TreeItem<>("Discussions");
@@ -248,7 +251,6 @@ public class ControllerRole1Home {
 					alert.showAndWait().ifPresent(res -> {
 						if (res == javafx.scene.control.ButtonType.YES) {
 							try {
-								// HARD DELETE: Wipe thread and all children
 								if (type.equals("Discussion")) {
 									theDatabase.deleteThread(id);
 									theDatabase.deleteAllRepliesForThread(id);
@@ -268,6 +270,7 @@ public class ControllerRole1Home {
 			javafx.scene.control.Label lblTopic = new javafx.scene.control.Label(tParts[2].trim());
 			lblTopic.setFont(javafx.scene.text.Font.font("Arial", 16));
 			lblTopic.setWrapText(true);
+			lblTopic.prefWidthProperty().bind(container.widthProperty().subtract(30)); 
 			
 			threadBox.getChildren().addAll(headerLayout, lblTopic);
 			container.getChildren().add(threadBox);
@@ -345,6 +348,8 @@ public class ControllerRole1Home {
 				javafx.scene.control.Label rLblContent = new javafx.scene.control.Label(rParts[2].trim());
 				rLblContent.setFont(javafx.scene.text.Font.font("Arial", 15));
 				rLblContent.setWrapText(true);
+				rLblContent.prefWidthProperty().bind(container.widthProperty().subtract(indent + 40));
+				
 				replyBox.getChildren().addAll(rHeaderLayout, rLblContent);
 
 				if (type.equals("Discussion")) {
@@ -493,6 +498,7 @@ public class ControllerRole1Home {
 				javafx.scene.control.Label lblContent = new javafx.scene.control.Label(parts[1].trim());
 				lblContent.setFont(javafx.scene.text.Font.font("Arial", 15));
 				lblContent.setWrapText(true);
+				lblContent.prefWidthProperty().bind(container.widthProperty().subtract(60));
 				msgBox.getChildren().addAll(lblCreator, lblContent);
 				container.getChildren().add(msgBox);
 			}
