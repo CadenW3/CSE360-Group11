@@ -17,16 +17,6 @@ import database.Database;
 
 public class ControllerRole1Home {
 
-	/*-*******************************************************************************************
-
-	User Interface Actions for this page
-	
-	This controller is not a class that gets instantiated.  Rather, it is a collection of protected
-	static methods that can be called by the View (which is a singleton instantiated object) and 
-	the Model is often just a stub, or will be a singleton instantiated object.
-	
-	 */
-
 	private static Database theDatabase = applicationMain.FoundationsMain.database;
 	protected static boolean filterMyPosts = false;
 	protected static boolean filterUnread = false;
@@ -34,9 +24,6 @@ public class ControllerRole1Home {
 	protected static String currentFilterKeyword = "";
 	protected static String currentFilterType = "";
 
-	/**
-	 * Default constructor is not used.
-	 */
 	public ControllerRole1Home() {
 	}
 	
@@ -147,158 +134,75 @@ public class ControllerRole1Home {
 		}
 	}
 
-	// Helper method: Recursively cleans up any soft-deleted posts that no longer have active replies under them
-	private static java.util.List<String> cleanupOrphanedDeletes(java.util.List<String> replies, String type) {
-		boolean changed = true;
-		while (changed) {
-			changed = false;
-			java.util.List<String> toKeep = new java.util.ArrayList<>();
-			for (String replyData : replies) {
-				String[] rParts = replyData.split("\\|");
-				int rId = Integer.parseInt(rParts[0].trim());
-				String content = rParts[2].trim();
-				
-				boolean hasChildren = false;
-				for (String checkR : replies) {
-					int parentId = Integer.parseInt(checkR.split("\\|")[1].trim());
-					if (parentId == rId) { hasChildren = true; break; }
-				}
-				
-				if (content.equals("[This post was deleted.]") && !hasChildren) {
-					try {
-						if (type.equals("Discussion")) theDatabase.deleteReply(rId);
-						else theDatabase.deleteQuestionReply(rId);
-					} catch (Exception e) { e.printStackTrace(); }
-					changed = true; 
-				} else {
-					toKeep.add(replyData);
-				}
-			}
-			replies = toKeep;
-		}
-		return replies;
-	}
-
 	protected static void refreshDiscussionTree(javafx.scene.control.TreeView<String> treeView, String userName, javafx.scene.control.Button btnMyPosts, javafx.scene.control.Button btnUnread) {
 		try {
+			theDatabase.getOrCreateGeneralThread();
+
+			managers.PostCollection postManager = new managers.PostCollection(theDatabase);
+			managers.ReplyCollection replyManager = new managers.ReplyCollection(theDatabase);
+			postManager.loadAllPosts();
+
 			int myPostsCount = 0;
 			int unreadCount = 0;
-			
-			theDatabase.getOrCreateGeneralThread();
 
 			javafx.scene.control.TreeItem<String> hiddenRoot = new javafx.scene.control.TreeItem<>("Hidden");
 			javafx.scene.control.TreeItem<String> discussionsRoot = new javafx.scene.control.TreeItem<>("Discussions");
 			javafx.scene.control.TreeItem<String> questionsRoot = new javafx.scene.control.TreeItem<>("Questions");
 			discussionsRoot.setExpanded(true); questionsRoot.setExpanded(true);
 
-			for (String threadData : theDatabase.getThreadList()) {
-				String[] tParts = threadData.split("\\|");
-				if (tParts.length < 4) continue;
-				int id = Integer.parseInt(tParts[0].trim());
-				
-				java.util.List<String> replies = cleanupOrphanedDeletes(theDatabase.getRepliesForThread(id), "Discussion");
-				if (tParts[1].trim().equals("[Deleted]") && replies.isEmpty()) {
-					try { theDatabase.deleteThread(id); } catch(Exception e) {}
-					continue;
-				}
-				
-				if (currentFilterType.equals("Discussion") && !currentFilterKeyword.isEmpty()) {
-					if (!tParts[1].toLowerCase().contains(currentFilterKeyword.toLowerCase()) && 
-						!tParts[2].toLowerCase().contains(currentFilterKeyword.toLowerCase())) { continue; }
-				}
-				
-				boolean isMine = tParts[3].trim().equals(userName);
-				boolean isRead = theDatabase.hasReadPost(userName, id, "Discussion");
-				if (isMine) myPostsCount++; if (!isRead) unreadCount++;
-
-				if (filterMyPosts && !isMine) continue;
-				if (filterUnread && isRead) continue;
-
-				String display = "[Thread-" + id + "] " + (!isRead ? "(UNREAD) " : "") + tParts[1].trim();
-				javafx.scene.control.TreeItem<String> node = new javafx.scene.control.TreeItem<>(display);
-				
-				java.util.Map<Integer, javafx.scene.control.TreeItem<String>> rNodes = new java.util.HashMap<>();
-				int postCounter = 1;
-				java.util.Map<Integer, Integer> replyCounters = new java.util.HashMap<>();
-				for (String r : replies) {
-					String[] p = r.split("\\|");
-					int rId = Integer.parseInt(p[0].trim());
-					int pId = Integer.parseInt(p[1].trim());
-					
-					String prefix; String localLabel;
-					if (pId == 0) {
-						prefix = "[Post-" + rId + "]";
-						localLabel = "Post " + (postCounter++);
-					} else {
-						prefix = "[Reply-" + rId + "]";
-						int c = replyCounters.getOrDefault(pId, 1);
-						localLabel = "Reply " + c;
-						replyCounters.put(pId, c + 1);
-					}
-					rNodes.put(rId, new javafx.scene.control.TreeItem<>(prefix + " " + localLabel + ": " + p[2].trim() + " (" + p[3].trim() + ")"));
-				}
-				for (String r : replies) {
-					String[] p = r.split("\\|");
-					int rId = Integer.parseInt(p[0].trim()); int pId = Integer.parseInt(p[1].trim());
-					if (pId == 0) node.getChildren().add(rNodes.get(rId));
-					else if (rNodes.containsKey(pId)) rNodes.get(pId).getChildren().add(rNodes.get(rId));
-				}
-				discussionsRoot.getChildren().add(node);
+			for (entityClasses.Post post : postManager.getAllPosts()) {
+				boolean isMine = post.getAuthor().equals(userName);
+				boolean isRead = theDatabase.hasReadPost(userName, post.getId(), post.getType());
+				if (isMine) myPostsCount++; 
+				if (!isRead) unreadCount++;
 			}
 
-			for (String qData : theDatabase.getQuestionList()) {
-				String[] qParts = qData.split("\\|");
-				if (qParts.length < 4) continue;
-				int id = Integer.parseInt(qParts[0].trim());
-				
-				java.util.List<String> replies = cleanupOrphanedDeletes(theDatabase.getRepliesForQuestion(id), "Question");
-				if (qParts[1].trim().equals("[Deleted]") && replies.isEmpty()) {
-					try { theDatabase.deleteQuestion(id); } catch(Exception e) {}
+			postManager.filterPosts(currentFilterKeyword, currentFilterType.isEmpty() ? null : currentFilterType, filterMyPosts, filterUnread, userName);
+
+			for (entityClasses.Post post : postManager.getFilteredSubset()) {
+				replyManager.loadRepliesForPost(post.getId(), post.getType());
+				java.util.List<entityClasses.Reply> activeReplies = replyManager.getActiveSubset();
+
+				if (post.getTitle().equals("[Deleted]") && activeReplies.isEmpty()) {
+					postManager.deletePost(post.getId(), post.getType());
 					continue;
 				}
-				
-				if (currentFilterType.equals("Question") && !currentFilterKeyword.isEmpty()) {
-					if (!qParts[1].toLowerCase().contains(currentFilterKeyword.toLowerCase()) && 
-						!qParts[2].toLowerCase().contains(currentFilterKeyword.toLowerCase())) { continue; }
-				}
-				
-				boolean isMine = qParts[3].trim().equals(userName);
-				boolean isRead = theDatabase.hasReadPost(userName, id, "Question");
-				if (isMine) myPostsCount++; if (!isRead) unreadCount++;
 
-				if (filterMyPosts && !isMine) continue;
-				if (filterUnread && isRead) continue;
-
-				String display = "[Question-" + id + "] " + (!isRead ? "(UNREAD) " : "") + qParts[1].trim();
+				boolean isRead = theDatabase.hasReadPost(userName, post.getId(), post.getType());
+				
+				// Fix 1: Properly prefix the Thread/Question identifier for the View logic
+				String prefixType = post.getType().equals("Discussion") ? "Thread" : "Question";
+				String display = "[" + prefixType + "-" + post.getId() + "] " + (!isRead ? "(UNREAD) " : "") + post.getTitle();
+				
 				javafx.scene.control.TreeItem<String> node = new javafx.scene.control.TreeItem<>(display);
 				
 				java.util.Map<Integer, javafx.scene.control.TreeItem<String>> rNodes = new java.util.HashMap<>();
 				int postCounter = 1;
 				java.util.Map<Integer, Integer> replyCounters = new java.util.HashMap<>();
-				for (String r : replies) {
-					String[] p = r.split("\\|");
-					int rId = Integer.parseInt(p[0].trim());
-					int pId = Integer.parseInt(p[1].trim());
-					
+				
+				for (entityClasses.Reply r : activeReplies) {
 					String prefix; String localLabel;
-					if (pId == 0) {
-						prefix = "[Post-" + rId + "]";
+					if (r.getParentId() == 0) {
+						prefix = "[Post-" + r.getId() + "]";
 						localLabel = "Post " + (postCounter++);
 					} else {
-						prefix = "[Reply-" + rId + "]";
-						int c = replyCounters.getOrDefault(pId, 1);
+						prefix = "[Reply-" + r.getId() + "]";
+						int c = replyCounters.getOrDefault(r.getParentId(), 1);
 						localLabel = "Reply " + c;
-						replyCounters.put(pId, c + 1);
+						replyCounters.put(r.getParentId(), c + 1);
 					}
-					rNodes.put(rId, new javafx.scene.control.TreeItem<>(prefix + " " + localLabel + ": " + p[2].trim() + " (" + p[3].trim() + ")"));
+					rNodes.put(r.getId(), new javafx.scene.control.TreeItem<>(prefix + " " + localLabel + ": " + r.getContent() + " (" + r.getAuthor() + ")"));
 				}
-				for (String r : replies) {
-					String[] p = r.split("\\|");
-					int rId = Integer.parseInt(p[0].trim()); int pId = Integer.parseInt(p[1].trim());
-					if (pId == 0) node.getChildren().add(rNodes.get(rId));
-					else if (rNodes.containsKey(pId)) rNodes.get(pId).getChildren().add(rNodes.get(rId));
+				for (entityClasses.Reply r : activeReplies) {
+					if (r.getParentId() == 0) node.getChildren().add(rNodes.get(r.getId()));
+					else if (rNodes.containsKey(r.getParentId())) rNodes.get(r.getParentId()).getChildren().add(rNodes.get(r.getId()));
 				}
-				questionsRoot.getChildren().add(node);
+
+				if (post.getType().equals("Discussion")) {
+					discussionsRoot.getChildren().add(node);
+				} else {
+					questionsRoot.getChildren().add(node);
+				}
 			}
 
 			hiddenRoot.getChildren().addAll(discussionsRoot, questionsRoot);
@@ -313,16 +217,28 @@ public class ControllerRole1Home {
 	protected static void renderPostView(int id, String type, javafx.scene.layout.VBox container) {
 		try {
 			container.getChildren().clear(); 
-			String data = (type.equals("Discussion")) ? theDatabase.getThread(id) : theDatabase.getQuestion(id);
-			if (data == null) return;
-			String[] tParts = data.split("\\|");
+			
+			managers.PostCollection postManager = new managers.PostCollection(theDatabase);
+			managers.ReplyCollection replyManager = new managers.ReplyCollection(theDatabase);
+			postManager.loadAllPosts();
+			
+			entityClasses.Post tempPost = null;
+			for (entityClasses.Post p : postManager.getAllPosts()) {
+				if (p.getId() == id && p.getType().equals(type)) {
+					tempPost = p;
+					break;
+				}
+			}
+			if (tempPost == null) return;
+            
+            final entityClasses.Post post = tempPost;
+			
+			replyManager.loadRepliesForPost(id, type);
+			java.util.List<entityClasses.Reply> replies = replyManager.getActiveSubset();
 			
 			String dateStr = theDatabase.getTimestampStr(id, type.equals("Discussion") ? "DiscussionThreads" : "Questions");
 			String currentUser = ViewRole1Home.theUser.getUserName();
 			java.util.List<String> students = theDatabase.getStudentUsers();
-			
-			java.util.List<String> replies = (type.equals("Discussion")) ? theDatabase.getRepliesForThread(id) : theDatabase.getRepliesForQuestion(id);
-			replies = cleanupOrphanedDeletes(replies, type);
 
 			javafx.scene.layout.VBox threadBox = new javafx.scene.layout.VBox(8);
 			threadBox.setStyle("-fx-background-color: #f4f6f8; -fx-padding: 15; -fx-border-color: #d1d5db; -fx-border-width: 0 0 2 0;");
@@ -330,23 +246,23 @@ public class ControllerRole1Home {
 			javafx.scene.layout.HBox headerLayout = new javafx.scene.layout.HBox(10);
 			headerLayout.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 			
-			javafx.scene.control.Label lblTitle = new javafx.scene.control.Label(tParts[1].trim());
+			javafx.scene.control.Label lblTitle = new javafx.scene.control.Label(post.getTitle());
 			lblTitle.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 22));
 			lblTitle.setTextFill(javafx.scene.paint.Color.web("#1f2937"));
 			
-			javafx.scene.control.Label lblCreator = new javafx.scene.control.Label(type + " by: " + tParts[3].trim() + "  •  " + dateStr);
+			javafx.scene.control.Label lblCreator = new javafx.scene.control.Label(type + " by: " + post.getAuthor() + "  •  " + dateStr);
 			lblCreator.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontPosture.ITALIC, 14));
 			lblCreator.setTextFill(javafx.scene.paint.Color.web("#6b7280"));
 			
 			headerLayout.getChildren().addAll(lblTitle, lblCreator);
 
-			boolean threadOwner = tParts[3].trim().equals(currentUser);
-			boolean threadIsStudent = students.contains(tParts[3].trim());
+			boolean threadOwner = post.getAuthor().equals(currentUser);
+			boolean threadIsStudent = students.contains(post.getAuthor());
 			
-			if ((threadOwner || threadIsStudent) && !tParts[2].trim().equals("[This post was deleted.]")) {
+			if ((threadOwner || threadIsStudent) && !post.getTopic().equals("[This post was deleted.]")) {
 				javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
 				btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5;");
-				btnEdit.setOnAction(e -> showEditThreadDialog(id, type, tParts[1].trim(), tParts[2].trim(), container));
+				btnEdit.setOnAction(e -> showEditThreadDialog(id, type, post.getTitle(), post.getTopic(), container));
 				
 				javafx.scene.control.Button btnDelete = new javafx.scene.control.Button("Delete Thread");
 				btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5;");
@@ -355,13 +271,7 @@ public class ControllerRole1Home {
 					alert.showAndWait().ifPresent(res -> {
 						if (res == javafx.scene.control.ButtonType.YES) {
 							try {
-								if (type.equals("Discussion")) {
-									theDatabase.deleteThread(id);
-									theDatabase.deleteAllRepliesForThread(id);
-								} else {
-									theDatabase.deleteQuestion(id);
-									theDatabase.deleteAllRepliesForQuestion(id);
-								}
+								postManager.deletePost(id, type);
 								container.getChildren().clear();
 								refreshDiscussionTree(ViewRole1Home.tree_Discussions, currentUser, ViewRole1Home.button_FilterMyPosts, ViewRole1Home.button_FilterUnread);
 							} catch (Exception ex) { ex.printStackTrace(); }
@@ -371,7 +281,7 @@ public class ControllerRole1Home {
 				headerLayout.getChildren().addAll(btnEdit, btnDelete);
 			}
 			
-			javafx.scene.control.Label lblTopic = new javafx.scene.control.Label(tParts[2].trim());
+			javafx.scene.control.Label lblTopic = new javafx.scene.control.Label(post.getTopic());
 			lblTopic.setFont(javafx.scene.text.Font.font("Arial", 16));
 			lblTopic.setWrapText(true);
 			lblTopic.prefWidthProperty().bind(container.widthProperty().subtract(30)); 
@@ -382,40 +292,30 @@ public class ControllerRole1Home {
 			int postCounter = 1;
 			java.util.Map<Integer, Integer> replyCounters = new java.util.HashMap<>();
 			
-			for (String replyData : replies) {
-				String[] rParts = replyData.split("\\|");
-				int rId = Integer.parseInt(rParts[0].trim());
-				int parentId = Integer.parseInt(rParts[1].trim());
-				
+			for (entityClasses.Reply r : replies) {
 				javafx.scene.layout.VBox replyBox = new javafx.scene.layout.VBox(5);
-				double indent = (parentId == 0) ? 15 : 50; 
+				double indent = (r.getParentId() == 0) ? 15 : 50; 
 				replyBox.setStyle("-fx-background-color: #ffffff; -fx-padding: 15 15 15 " + indent + "; -fx-border-color: #e5e7eb; -fx-border-width: 0 0 1 0;");
 				
 				javafx.scene.layout.HBox rHeaderLayout = new javafx.scene.layout.HBox(10);
 				rHeaderLayout.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 				
-				String typeLabel = (parentId == 0) ? "Post #" + (postCounter++) : "Reply #" + (replyCounters.merge(parentId, 1, Integer::sum));
-				String rDateStr = theDatabase.getTimestampStr(rId, type.equals("Discussion") ? "Replies" : "QuestionReplies");
+				String typeLabel = (r.getParentId() == 0) ? "Post #" + (postCounter++) : "Reply #" + (replyCounters.merge(r.getParentId(), 1, Integer::sum));
+				String rDateStr = theDatabase.getTimestampStr(r.getId(), type.equals("Discussion") ? "Replies" : "QuestionReplies");
 
-				javafx.scene.control.Label rLblCreator = new javafx.scene.control.Label(rParts[3].trim() + " (" + typeLabel + ")  •  " + rDateStr);
+				javafx.scene.control.Label rLblCreator = new javafx.scene.control.Label(r.getAuthor() + " (" + typeLabel + ")  •  " + rDateStr);
 				rLblCreator.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 14));
 				rHeaderLayout.getChildren().add(rLblCreator);
 				
 				javafx.scene.layout.HBox actionBox = new javafx.scene.layout.HBox(5);
 				
-				boolean replyOwner = rParts[3].trim().equals(currentUser);
-				boolean replyIsStudent = students.contains(rParts[3].trim());
+				boolean replyOwner = r.getAuthor().equals(currentUser);
+				boolean replyIsStudent = students.contains(r.getAuthor());
 				
-				if ((replyOwner || replyIsStudent) && !rParts[2].trim().equals("[This post was deleted.]")) {
-					boolean tempHasChildren = false;
-					for (String checkR : replies) {
-						if (Integer.parseInt(checkR.split("\\|")[1].trim()) == rId) { tempHasChildren = true; break; }
-					}
-					final boolean hasChildren = tempHasChildren;
-					
+				if ((replyOwner || replyIsStudent) && !r.getContent().equals("[This post was deleted.]")) {
 					javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
 					btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5; -fx-font-size: 11px;");
-					btnEdit.setOnAction(e -> showEditReplyDialog(rId, type, rParts[2].trim(), id, container));
+					btnEdit.setOnAction(e -> showEditReplyDialog(r.getId(), type, r.getContent(), id, container));
 					
 					javafx.scene.control.Button btnDelete = new javafx.scene.control.Button("Delete");
 					btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5; -fx-font-size: 11px;");
@@ -424,13 +324,7 @@ public class ControllerRole1Home {
 						alert.showAndWait().ifPresent(res -> {
 							if (res == javafx.scene.control.ButtonType.YES) {
 								try {
-									if (hasChildren) {
-										if (type.equals("Discussion")) { theDatabase.softDeleteReply(rId); } 
-										else { theDatabase.softDeleteQuestionReply(rId); }
-									} else {
-										if (type.equals("Discussion")) { theDatabase.deleteReply(rId); } 
-										else { theDatabase.deleteQuestionReply(rId); }
-									}
+									replyManager.deleteReply(r.getId(), type, id);
 								} catch (Exception ex) { ex.printStackTrace(); }
 								refreshDiscussionTree(ViewRole1Home.tree_Discussions, currentUser, ViewRole1Home.button_FilterMyPosts, ViewRole1Home.button_FilterUnread);
 								renderPostView(id, type, container);
@@ -443,13 +337,13 @@ public class ControllerRole1Home {
 				if (type.equals("Discussion") && replyIsStudent) {
 					javafx.scene.control.Button btnGrade = new javafx.scene.control.Button("Grade");
 					btnGrade.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5; -fx-font-size: 11px;");
-					btnGrade.setOnAction(e -> showGradingDialog(rId, id, type, container));
+					btnGrade.setOnAction(e -> showGradingDialog(r.getId(), id, type, container));
 					actionBox.getChildren().add(btnGrade);
 				}
 				
 				if (!actionBox.getChildren().isEmpty()) rHeaderLayout.getChildren().add(actionBox);
 
-				javafx.scene.control.Label rLblContent = new javafx.scene.control.Label(rParts[2].trim());
+				javafx.scene.control.Label rLblContent = new javafx.scene.control.Label(r.getContent());
 				rLblContent.setFont(javafx.scene.text.Font.font("Arial", 15));
 				rLblContent.setWrapText(true);
 				rLblContent.prefWidthProperty().bind(container.widthProperty().subtract(indent + 40));
@@ -457,7 +351,7 @@ public class ControllerRole1Home {
 				replyBox.getChildren().addAll(rHeaderLayout, rLblContent);
 
 				if (type.equals("Discussion")) {
-					String gradeData = theDatabase.getGrade(rId);
+					String gradeData = theDatabase.getGrade(r.getId());
 					if (gradeData != null) {
 						javafx.scene.layout.HBox gradeBox = new javafx.scene.layout.HBox();
 						gradeBox.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
@@ -498,11 +392,8 @@ public class ControllerRole1Home {
 
 		dialog.showAndWait().ifPresent(res -> {
 			try {
-				if (type.equals("Discussion")) {
-					theDatabase.updateThread(id, res[0], res[1]);
-				} else {
-					theDatabase.updateQuestion(id, res[0], res[1]);
-				}
+				managers.PostCollection postManager = new managers.PostCollection(theDatabase);
+				postManager.updatePost(id, type, res[0], res[1]);
 			} catch (Exception e) { e.printStackTrace(); }
 			refreshDiscussionTree(ViewRole1Home.tree_Discussions, ViewRole1Home.theUser.getUserName(), ViewRole1Home.button_FilterMyPosts, ViewRole1Home.button_FilterUnread);
 			renderPostView(id, type, container);
@@ -514,11 +405,8 @@ public class ControllerRole1Home {
 		dialog.setTitle("Edit Reply");
 		dialog.setHeaderText("Update your reply:");
 		dialog.showAndWait().ifPresent(newContent -> {
-			if (type.equals("Discussion")) {
-				theDatabase.updateReply(rId, newContent);
-			} else {
-				theDatabase.updateQuestionReply(rId, newContent);
-			}
+			managers.ReplyCollection replyManager = new managers.ReplyCollection(theDatabase);
+			replyManager.updateReply(rId, type, newContent, threadId);
 			refreshDiscussionTree(ViewRole1Home.tree_Discussions, ViewRole1Home.theUser.getUserName(), ViewRole1Home.button_FilterMyPosts, ViewRole1Home.button_FilterUnread);
 			renderPostView(threadId, type, container);
 		});
@@ -559,8 +447,10 @@ public class ControllerRole1Home {
 
 	protected static void executeReplyDB(int id, int parentReplyId, String type, String content, String userName, javafx.scene.control.TreeView<String> tree, javafx.scene.layout.VBox container, javafx.scene.control.Button b1, javafx.scene.control.Button b2) {
 		try {
-			if (type.equals("Discussion")) theDatabase.createReply(id, parentReplyId, content, userName);
-			else theDatabase.createQuestionReply(id, parentReplyId, content, userName);
+			managers.ReplyCollection replyManager = new managers.ReplyCollection(theDatabase);
+			replyManager.createReply(id, parentReplyId, type, content, userName);
+			// Auto read after replying
+            try { theDatabase.markPostAsRead(userName, id, type); } catch(Exception e){}
 			refreshDiscussionTree(tree, userName, b1, b2);
 			renderPostView(id, type, container);
 		} catch (Exception e) { e.printStackTrace(); }
@@ -568,14 +458,42 @@ public class ControllerRole1Home {
 
 	protected static void createNewThread(String title, String topic, String userName, javafx.scene.control.TreeView<String> tree, javafx.scene.control.Button b1, javafx.scene.control.Button b2) {
 		try {
-			theDatabase.createThread(title, topic, userName);
+			managers.PostCollection postManager = new managers.PostCollection(theDatabase);
+			postManager.createPost("Discussion", title, topic, userName);
+			
+			// Auto mark created thread as read
+            postManager.loadAllPosts();
+            int maxId = -1;
+            for(entityClasses.Post p : postManager.getAllPosts()) {
+                if(p.getType().equals("Discussion") && p.getAuthor().equals(userName) && p.getId() > maxId) {
+                    maxId = p.getId();
+                }
+            }
+            if(maxId != -1) {
+                try { theDatabase.markPostAsRead(userName, maxId, "Discussion"); } catch(Exception e){}
+            }
+
 			refreshDiscussionTree(tree, userName, b1, b2);
 		} catch (Exception e) { e.printStackTrace(); }
 	}
 
 	protected static void createNewQuestion(String title, String topic, String userName, javafx.scene.control.TreeView<String> tree, javafx.scene.control.Button b1, javafx.scene.control.Button b2) {
 		try {
-			theDatabase.createQuestion(title, topic, userName);
+			managers.PostCollection postManager = new managers.PostCollection(theDatabase);
+			postManager.createPost("Question", title, topic, userName);
+			
+			// Auto mark created question as read
+            postManager.loadAllPosts();
+            int maxId = -1;
+            for(entityClasses.Post p : postManager.getAllPosts()) {
+                if(p.getType().equals("Question") && p.getAuthor().equals(userName) && p.getId() > maxId) {
+                    maxId = p.getId();
+                }
+            }
+            if(maxId != -1) {
+                try { theDatabase.markPostAsRead(userName, maxId, "Question"); } catch(Exception e){}
+            }
+
 			refreshDiscussionTree(tree, userName, b1, b2);
 		} catch (Exception e) { e.printStackTrace(); }
 	}
@@ -616,31 +534,14 @@ public class ControllerRole1Home {
 		} catch (Exception e) { e.printStackTrace(); }
 	}
 
-	/**********
-	 * <p> Method: performUpdate() </p>
-	 * * <p> Description: This method directs the user to the User Update Page so the user can change
-	 * the user account attributes. </p>
-	 * */
 	protected static void performUpdate () {
 		guiUserUpdate.ViewUserUpdate.displayUserUpdate(ViewRole1Home.theStage, ViewRole1Home.theUser);
 	}	
 
-	/**********
-	 * <p> Method: performLogout() </p>
-	 * * <p> Description: This method logs out the current user and proceeds to the normal login
-	 * page where existing users can log in or potential new users with a invitation code can
-	 * start the process of setting up an account. </p>
-	 * */
 	protected static void performLogout() {
 		guiUserLogin.ViewUserLogin.displayUserLogin(ViewRole1Home.theStage);
 	}
 	
-	/**********
-	 * <p> Method: performQuit() </p>
-	 * * <p> Description: This method terminates the execution of the program.  It leaves the
-	 * database in a state where the normal login page will be displayed when the application is
-	 * restarted.</p>
-	 * */	
 	protected static void performQuit() {
 		System.exit(0);
 	}
