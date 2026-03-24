@@ -170,7 +170,7 @@ public class ViewUserLogin {
 		setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 520);
 		button_Quit.setOnAction((_) -> {ControllerUserLogin.performQuit(); });
 
-		//		theRootPane.getChildren().clear();
+		//		theRootPane.getChildren().clear(); 
 		
 		// Establish the text input operand field for the password
 		setupTextUI(text_Password, "Arial", 18, 300, Pos.BASELINE_LEFT, 50, 210, true);

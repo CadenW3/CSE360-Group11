@@ -8,7 +8,7 @@ import database.Database;
  * actions basic on the user's use of the JavaFX GUI widgets defined by the View class.
  * * This page is a stub for establish future roles for the application.
  * * The class has been written assuming that the View or the Model are the only class methods that
- * can invoke these methods.  This is why each has been declared at "protected".  Do not change any
+ * can invoke these methods.  This is why each has been declared at "protected".  Do not change any 
  * of these methods to public.</p>
  * * <p> Copyright: Lynn Robert Carter © 2025 </p>
  * * @author Lynn Robert Carter

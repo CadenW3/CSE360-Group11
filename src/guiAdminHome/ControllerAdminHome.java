@@ -376,7 +376,7 @@ public class ControllerAdminHome {
 				alert.setTitle("System User List");
 				alert.setHeaderText("Registered Users");
 						
-				// Use a TextArea to ensure the content is fully copyable and formatted cleanly
+				// Use a TextArea to ensure the content is fully copyable and formatted cleanly 
 				javafx.scene.control.TextArea textArea = new javafx.scene.control.TextArea(report);
 				textArea.setEditable(false);
 				textArea.setWrapText(false);

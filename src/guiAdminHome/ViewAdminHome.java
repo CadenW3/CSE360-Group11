@@ -25,7 +25,7 @@ import guiUserUpdate.ViewUserUpdate;
  * * <p> Description: The Java/FX-based Admin Home Page.  This class provides the JavaFX GUI widgets
  * that enable an admin to perform admin functions.  This page contains a number of buttons that
  * have not yet been implemented.  What has been implemented may not work the way the final product
- * requires and there maybe defects in this code.
+ * requires and there maybe defects in this code. 
  * * The class has been written using a singleton design pattern and is the View portion of the 
  * Model, View, Controller pattern.  The pattern is designed that the all accesses to this page and
  * its functions starts by invoking the static method displayAdminHome.  No other method should 

@@ -76,7 +76,7 @@ public class PostCollection {
         try {
             if (type.equals("Discussion")) db.createThread(title, topic, author);
             else db.createQuestion(title, topic, author);
-            loadAllPosts(); // Refresh collection
+            loadAllPosts(); // Refresh collection 
         } catch (Exception e) { e.printStackTrace(); }
     }
 

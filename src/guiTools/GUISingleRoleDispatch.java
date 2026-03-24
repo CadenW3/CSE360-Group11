@@ -8,7 +8,7 @@ import entityClasses.User;
 /*******
  * <p> Title: GUISingleRoleDispatch Class. </p>
  * 
- * <p> Description: The class dispatches the execution to the appropriate role's home
+ * <p> Description: The class dispatches the execution to the appropriate role's home 
  * page when the user has only one role.  This is not actually a GUI page... it just dispatches
  * to an actual GUI page for the specified role.
  * 

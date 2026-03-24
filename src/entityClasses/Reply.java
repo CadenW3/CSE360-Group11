@@ -4,7 +4,7 @@ public class Reply {
     private int id;
     private int parentId; // 0 if replying to the main post
     private int postId;
-    private String type; // "Discussion" or "Question"
+    private String type; // "Discussion" or "Question" 
     private String content;
     private String author;
 

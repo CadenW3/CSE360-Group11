@@ -121,7 +121,7 @@ public class UserNameRecognizer {
 					userNameSize++;
 					
 					// This only occurs once, so there is no need to check for the size getting
-					// too large.
+					// too large. 
 				}
 				// If it is none of those characters, the FSM halts
 				else 

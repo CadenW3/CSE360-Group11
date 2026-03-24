@@ -453,7 +453,7 @@ public class ViewRole2Home {
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used
 	 * @param w		The width of the Button
-	 * @param p		The alignment (e.g. left, centered, or right)
+	 * @param p		The alignment (e.g. left, centered, or right) 
 	 * @param x		The location from the left edge (x axis)
 	 * @param y		The location from the top (y axis)
 	 */

@@ -73,7 +73,7 @@ public class ControllerNewAccount {
 		String password1 = ViewNewAccount.text_Password1.getText();
 		String password2 = ViewNewAccount.text_Password2.getText();
 
-		// Check Password Requirements
+		// Check Password Requirements 
 		String passwordError = checkPassword(password1);
 		if (!passwordError.isEmpty()) {
 			ViewNewAccount.alertUsernamePasswordError.setTitle("Invalid Password");

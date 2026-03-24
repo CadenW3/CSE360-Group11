@@ -79,7 +79,7 @@ public class ReplyCollection {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    // --- UPDATE ---
+    // --- UPDATE --- 
     public void updateReply(int replyId, String type, String newContent, int postId) {
         try {
             if (type.equals("Discussion")) db.updateReply(replyId, newContent);

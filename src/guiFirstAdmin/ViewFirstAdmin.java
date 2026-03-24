@@ -17,7 +17,7 @@ import javafx.scene.Scene;
  * <p> Title: ViewFirstAdmin Class</p>
  * 
  * <p> Description: The FirstAdmin Page View.  This class is used to require the very first user of
- * the system to specify an Admin Username and Password when there is no database for the
+ * the system to specify an Admin Username and Password when there is no database for the 
  * application.  This avoids the common weakness practice of hard coding credentials into the 
  * application.</p>
  * 

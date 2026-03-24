@@ -8,7 +8,7 @@ package entityClasses;
  * 
  * <p> Copyright: Lynn Robert Carter © 2025 </p>
  * 
- * @author Lynn Robert Carter
+ * @author Lynn Robert Carter 
  * 
  * 
  */ 

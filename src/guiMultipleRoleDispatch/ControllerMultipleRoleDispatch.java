@@ -51,7 +51,7 @@ public class ControllerMultipleRoleDispatch {
 	 */
 	static protected void performRole() {
 		
-		// Fetch the role from the SelectRole ComboBox
+		// Fetch the role from the SelectRole ComboBox 
 		String role = guiMultipleRoleDispatch.ViewMultipleRoleDispatch.combobox_SelectRole.getValue();
 
 		// See if Admin

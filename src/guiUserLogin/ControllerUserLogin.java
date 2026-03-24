@@ -6,7 +6,7 @@ import javafx.stage.Stage;
 
 /*******
  * <p> Title: ControllerUserLogin Class. </p>
- * * <p> Description: The Java/FX-based User Login Page.  This class provides the controller
+ * * <p> Description: The Java/FX-based User Login Page.  This class provides the controller 
  * actions basic on the user's use of the JavaFX GUI widgets defined by the View class.
  * * This controller determines if the log in is valid.  If so set up the link to the database, 
  * determines how many roles this user is authorized to play, and the calls one the of the array of

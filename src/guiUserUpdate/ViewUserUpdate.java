@@ -209,7 +209,7 @@ public class ViewUserUpdate {
 		dialogUpdatePreferredFirstName = new TextInputDialog("");
 		dialogUpdateEmailAddresss = new TextInputDialog("");
 
-		// Establish the label for each of the dialogs.
+		// Establish the label for each of the dialogs. 
 		dialogUpdateFirstName.setTitle("Update First Name");
 		dialogUpdateFirstName.setHeaderText("Update your First Name");
 		

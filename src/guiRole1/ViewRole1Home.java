@@ -550,7 +550,7 @@ public class ViewRole1Home {
 	
 	
 	/**********
-	 * Private local method to initialize the standard fields for a button
+	 * Private local method to initialize the standard fields for a button 
 	 * * @param b		The Button object to be initialized
 	 * @param ff	The font to be used
 	 * @param f		The size of the font to be used

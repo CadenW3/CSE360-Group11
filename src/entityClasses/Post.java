@@ -2,7 +2,7 @@ package entityClasses;
 
 public class Post {
     private int id;
-    private String type; // "Discussion" or "Question"
+    private String type; // "Discussion" or "Question" 
     private String title;
     private String topic;
     private String author;

@@ -66,7 +66,7 @@ public class FoundationsMain extends Application {
 	
 	**********************************************************************************************/
 	
-	// These are the application values required by the user interface.  All the other classes
+	// These are the application values required by the user interface.  All the other classes 
 	// access these constants to provide a uniform window size.	
 	public final static double WINDOW_WIDTH = 800;
 	public final static double WINDOW_HEIGHT = 600;

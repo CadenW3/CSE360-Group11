@@ -125,7 +125,7 @@ public class ControllerAddRemoveRoles {
 		System.out.println("*** Entering setupSelectedUser");
 		
 		// Create the list of roles that could be added for the currently selected user (e.g., Do
-		// not show a role to add that the user already has!)
+		// not show a role to add that the user already has!) 
 		ViewAddRemoveRoles.addList.clear();
 		ViewAddRemoveRoles.addList.add("<Select a role>");
 		if (!theDatabase.getCurrentAdminRole())

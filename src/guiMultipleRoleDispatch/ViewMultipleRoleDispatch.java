@@ -98,7 +98,7 @@ public class ViewMultipleRoleDispatch {
 		
 		if (theView == null) theView = new ViewMultipleRoleDispatch();
 
-		List<String> list = new ArrayList<String>();	// Create a new list empty list
+		List<String> list = new ArrayList<String>();	// Create a new list empty list 
 		theDatabase.getUserAccountDetails(theUser.getUserName());
 		
 

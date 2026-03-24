@@ -852,7 +852,7 @@ public class Database {
 	
 	/*******
 	 * <p> Method: void updateEmailAddress(String username, String emailAddress) </p>
-	 * 
+	 *  
 	 * <p> Description: Update the email address name of a user given that user's username and
 	 * 		the new email address.</p>
 	 * 

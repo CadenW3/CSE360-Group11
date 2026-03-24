@@ -12,7 +12,7 @@ import database.Database;
 public class ControllerUserUpdate {
 	/*-********************************************************************************************
 
-	The Controller for ViewUserUpdate 
+	The Controller for ViewUserUpdate  
 	
 	**********************************************************************************************/
 
