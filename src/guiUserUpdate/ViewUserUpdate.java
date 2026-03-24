@@ -339,6 +339,31 @@ public class ViewUserUpdate {
         		label_PreferredFirstName, label_CurrentPreferredFirstName, button_UpdatePreferredFirstName,
         		label_EmailAddress, label_CurrentEmailAddress, button_UpdateEmailAddress,
         		button_ProceedToUserHomePage);
+        
+        //Dynamic UI Scaling
+        theRootPane.widthProperty().addListener((obs, oldVal, newVal) -> {
+            double w = newVal.doubleValue();
+            label_ApplicationTitle.setMinWidth(w);
+            label_Purpose.setMinWidth(w);
+            
+            // Keeps the bottom navigation button perfectly centered
+            button_ProceedToUserHomePage.setLayoutX((w / 2) - 150);
+            
+            // Keeps the update buttons anchored to the right side if the window gets larger
+            double rightEdge = Math.max(500, w - 300);
+            button_UpdatePassword.setLayoutX(rightEdge);
+            button_UpdateFirstName.setLayoutX(rightEdge);
+            button_UpdateMiddleName.setLayoutX(rightEdge);
+            button_UpdateLastName.setLayoutX(rightEdge);
+            button_UpdatePreferredFirstName.setLayoutX(rightEdge);
+            button_UpdateEmailAddress.setLayoutX(rightEdge);
+        });
+
+        theRootPane.heightProperty().addListener((obs, oldVal, newVal) -> {
+            double h = newVal.doubleValue();
+            // Keeps the bottom button consistently anchored near the bottom of the window
+            button_ProceedToUserHomePage.setLayoutY(h - 100);
+        });
 	}
 	
 	

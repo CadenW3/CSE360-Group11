@@ -191,6 +191,30 @@ public class ViewUserLogin {
 				label_LogInInsrtuctions, label_AccountSetupInsrtuctions, text_Username,
 				button_Login, text_Password, text_Invitation, button_SetupAccount,
 				button_Quit);
+		
+		//Dynamic UI Scaling
+		theRootPane.widthProperty().addListener((obs, oldVal, newVal) -> {
+			double w = newVal.doubleValue();
+			label_ApplicationTitle.setMinWidth(w);
+			label_OperationalStartTitle.setMinWidth(w);
+			label_LogInInsrtuctions.setMinWidth(w);
+			label_AccountSetupInsrtuctions.setMinWidth(w);
+			
+			// Keep Quit button centered at the bottom
+			button_Quit.setLayoutX((w / 2) - 125);
+
+			// Keep the actionable buttons anchored to the right side if the window gets larger
+			double rightEdge = Math.max(475, w - 325);
+			button_Login.setLayoutX(rightEdge);
+			button_SetupAccount.setLayoutX(rightEdge);
+		});
+
+		theRootPane.heightProperty().addListener((obs, oldVal, newVal) -> {
+			double h = newVal.doubleValue();
+			// Anchor quit button consistently near the bottom
+			button_Quit.setLayoutY(h - 80);
+		});
+		
 	}
 
 

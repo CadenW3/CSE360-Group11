@@ -147,6 +147,30 @@ public class ViewNewAccount {
 		
         setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
         button_Quit.setOnAction((event) -> { ControllerNewAccount.performQuit(); });
+        
+        setupButtonUI(button_Quit, "Dialog", 18, 250, Pos.CENTER, 300, 540);
+        button_Quit.setOnAction((event) -> { ControllerNewAccount.performQuit(); });
+
+		// Dynamic UI Scaling
+		theRootPane.widthProperty().addListener((obs, oldVal, newVal) -> {
+			double w = newVal.doubleValue();
+			label_ApplicationTitle.setMinWidth(w);
+			label_NewUserCreation.setMinWidth(w);
+			label_NewUserLine.setMinWidth(w);
+
+			// Keep Quit button centered at the bottom
+			button_Quit.setLayoutX((w / 2) - 125);
+
+			// Keep the Setup button anchored to the right side
+			double rightEdge = Math.max(475, w - 325);
+			button_UserSetup.setLayoutX(rightEdge);
+		});
+
+		theRootPane.heightProperty().addListener((obs, oldVal, newVal) -> {
+			double h = newVal.doubleValue();
+			// Anchor quit button consistently near the bottom
+			button_Quit.setLayoutY(h - 60);
+		});
 	}
 	
 	/*-******************************************************************************************** 

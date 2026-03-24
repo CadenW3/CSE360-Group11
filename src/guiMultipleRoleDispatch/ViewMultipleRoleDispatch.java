@@ -173,6 +173,31 @@ public class ViewMultipleRoleDispatch {
 					button_PerformRole,
 					button_Logout,
 					button_Quit);
+			
+			//Dynamic UI Scaling
+			theRootPane.widthProperty().addListener((obs, oldVal, newVal) -> {
+				double w = newVal.doubleValue();
+				
+				// Ensure header labels stretch to keep text centered
+				label_PageTitle.setMinWidth(w);
+				label_WhichRole.setMinWidth(w);
+
+				// Dynamically re-center the ComboBox and Perform Role button
+				combobox_SelectRole.setLayoutX((w / 2) - 165);
+				button_PerformRole.setLayoutX((w / 2) + 15);
+
+				// Dynamically re-center the Logout and Quit buttons
+				button_Logout.setLayoutX((w / 2) - 220);
+				button_Quit.setLayoutX((w / 2) + 20);
+			});
+
+			theRootPane.heightProperty().addListener((obs, oldVal, newVal) -> {
+				double h = newVal.doubleValue();
+				
+				// Keep the Logout and Quit buttons consistently anchored near the bottom
+				button_Logout.setLayoutY(h - 100);
+				button_Quit.setLayoutY(h - 100);
+			});
 
 	}
 	/*-********************************************************************************************

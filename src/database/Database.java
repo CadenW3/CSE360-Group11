@@ -1792,4 +1792,15 @@ public class Database {
 					}
 					return tempPwd.toString();
 				}
+				
+				public void deleteGrade(int replyId) {
+				    // Replace "Grades" and "replyId" with your actual table and column names if they are different
+				    String query = "DELETE FROM Grades WHERE replyId = " + replyId;
+				    try {
+				        java.sql.Statement stmt = connection.createStatement();
+				        stmt.executeUpdate(query);
+				    } catch (Exception e) {
+				        e.printStackTrace();
+				    }
+				}
 		}

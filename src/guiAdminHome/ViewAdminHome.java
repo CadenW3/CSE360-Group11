@@ -358,6 +358,33 @@ public class ViewAdminHome {
 		
 		// With theRootPane set up with the common widgets, it is up to displayAdminHome to show
 		// that Pane to the user after the dynamic elements of the widgets have been updated.
+		
+		//Dynamic Scaling
+		theRootPane.widthProperty().addListener((obs, oldVal, newVal) -> {
+			double w = newVal.doubleValue();
+			label_PageTitle.setMinWidth(w);
+			line_Separator1.setEndX(w - 20);
+			line_Separator2.setEndX(w - 20);
+			line_Separator3.setEndX(w - 20);
+			line_Separator4.setEndX(w - 20);
+			button_UpdateThisUser.setLayoutX(w - 190);
+			button_Quit.setLayoutX(w - 280);
+			button_SendInvitation.setLayoutX(w - 170);
+			scroll_RequestDetails.setPrefWidth(w - 410);
+			box_RequestDetails.setPrefWidth(w - 430);
+		});
+
+		theRootPane.heightProperty().addListener((obs, oldVal, newVal) -> {
+			double h = newVal.doubleValue();
+			line_Separator4.setStartY(h - 75);
+			line_Separator4.setEndY(h - 75);
+			button_Logout.setLayoutY(h - 60);
+			button_Quit.setLayoutY(h - 60);
+			
+			tree_AdminRequests.setPrefHeight(h - 200);
+			scroll_RequestDetails.setPrefHeight(h - 200);
+		});
+		
 	}
 
 	/*-*******************************************************************************************

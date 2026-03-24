@@ -259,11 +259,16 @@ public class ControllerRole1Home {
 			boolean threadOwner = post.getAuthor().equals(currentUser);
 			boolean threadIsStudent = students.contains(post.getAuthor());
 			
-			if ((threadOwner || threadIsStudent) && !post.getTopic().equals("[This post was deleted.]")) {
-				javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
-				btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5;");
-				btnEdit.setOnAction(e -> showEditThreadDialog(id, type, post.getTitle(), post.getTopic(), container));
+			if (!post.getTopic().equals("[This post was deleted.]")) {
+				// Keep Edit restricted to the owner or student
+				if (threadOwner || threadIsStudent) {
+					javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
+					btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5;");
+					btnEdit.setOnAction(e -> showEditThreadDialog(id, type, post.getTitle(), post.getTopic(), container));
+					headerLayout.getChildren().add(btnEdit);
+				}
 				
+				// Allow Delete for ALL accounts
 				javafx.scene.control.Button btnDelete = new javafx.scene.control.Button("Delete Thread");
 				btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5;");
 				btnDelete.setOnAction(e -> {
@@ -278,7 +283,7 @@ public class ControllerRole1Home {
 						}
 					});
 				});
-				headerLayout.getChildren().addAll(btnEdit, btnDelete);
+				headerLayout.getChildren().add(btnDelete);
 			}
 			
 			javafx.scene.control.Label lblTopic = new javafx.scene.control.Label(post.getTopic());
@@ -310,13 +315,24 @@ public class ControllerRole1Home {
 				javafx.scene.layout.HBox actionBox = new javafx.scene.layout.HBox(5);
 				
 				boolean replyOwner = r.getAuthor().equals(currentUser);
-				boolean replyIsStudent = students.contains(r.getAuthor());
+				boolean replyIsStudent = false;
+				for (String student : students) {
+					if (student.equalsIgnoreCase(r.getAuthor())) {
+						replyIsStudent = true;
+						break;
+					}
+				}
 				
-				if ((replyOwner || replyIsStudent) && !r.getContent().equals("[This post was deleted.]")) {
-					javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
-					btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5; -fx-font-size: 11px;");
-					btnEdit.setOnAction(e -> showEditReplyDialog(r.getId(), type, r.getContent(), id, container));
+				if (!r.getContent().equals("[This post was deleted.]")) {
+					// Keep Edit restricted to the owner or student
+					if (replyOwner || replyIsStudent) {
+						javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
+						btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5; -fx-font-size: 11px;");
+						btnEdit.setOnAction(e -> showEditReplyDialog(r.getId(), type, r.getContent(), id, container));
+						actionBox.getChildren().add(btnEdit);
+					}
 					
+					// Allow Delete for ALL accounts
 					javafx.scene.control.Button btnDelete = new javafx.scene.control.Button("Delete");
 					btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5; -fx-font-size: 11px;");
 					btnDelete.setOnAction(e -> {
@@ -325,16 +341,22 @@ public class ControllerRole1Home {
 							if (res == javafx.scene.control.ButtonType.YES) {
 								try {
 									replyManager.deleteReply(r.getId(), type, id);
+									// Try to delete the grade associated with this reply from the database
+									try {
+										theDatabase.deleteGrade(r.getId());
+									} catch (Exception ex) { 
+										// Ignore if grade doesn't exist
+									}
 								} catch (Exception ex) { ex.printStackTrace(); }
 								refreshDiscussionTree(ViewRole1Home.tree_Discussions, currentUser, ViewRole1Home.button_FilterMyPosts, ViewRole1Home.button_FilterUnread);
 								renderPostView(id, type, container);
 							}
 						});
 					});
-					actionBox.getChildren().addAll(btnEdit, btnDelete);
+					actionBox.getChildren().add(btnDelete);
 				}
 
-				if (type.equals("Discussion") && replyIsStudent) {
+				if (type.equals("Discussion") && !replyOwner && !r.getContent().equals("[This post was deleted.]")) {
 					javafx.scene.control.Button btnGrade = new javafx.scene.control.Button("Grade");
 					btnGrade.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5; -fx-font-size: 11px;");
 					btnGrade.setOnAction(e -> showGradingDialog(r.getId(), id, type, container));
@@ -351,19 +373,29 @@ public class ControllerRole1Home {
 				replyBox.getChildren().addAll(rHeaderLayout, rLblContent);
 
 				if (type.equals("Discussion")) {
-					String gradeData = theDatabase.getGrade(r.getId());
-					if (gradeData != null) {
-						javafx.scene.layout.HBox gradeBox = new javafx.scene.layout.HBox();
-						gradeBox.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
-						gradeBox.setStyle("-fx-padding: 5 10; -fx-background-radius: 15; -fx-background-color: #d1fae5;");
-						javafx.scene.layout.VBox.setMargin(gradeBox, new javafx.geometry.Insets(10, 0, 0, 0));
-						String[] pts = gradeData.split("\\|");
-						int total = Integer.parseInt(pts[0]) + Integer.parseInt(pts[1]) + Integer.parseInt(pts[2]);
-						javafx.scene.control.Label lblGrade = new javafx.scene.control.Label("Grade Given: " + total + "/30");
-						lblGrade.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 12));
-						lblGrade.setTextFill(javafx.scene.paint.Color.web("#065f46"));
-						gradeBox.getChildren().add(lblGrade);
-						replyBox.getChildren().add(gradeBox);
+					// If the post is already marked as deleted, actively remove its grade from the database
+					if (r.getContent().equals("[This post was deleted.]")) {
+						try {
+							theDatabase.deleteGrade(r.getId());
+						} catch (Exception ex) {
+							// Ignore if no grade exists to delete
+						}
+					} else {
+						// Only fetch and display the grade if the post is NOT deleted
+						String gradeData = theDatabase.getGrade(r.getId());
+						if (gradeData != null) {
+							javafx.scene.layout.HBox gradeBox = new javafx.scene.layout.HBox();
+							gradeBox.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+							gradeBox.setStyle("-fx-padding: 5 10; -fx-background-radius: 15; -fx-background-color: #d1fae5;");
+							javafx.scene.layout.VBox.setMargin(gradeBox, new javafx.geometry.Insets(10, 0, 0, 0));
+							String[] pts = gradeData.split("\\|");
+							int total = Integer.parseInt(pts[0]) + Integer.parseInt(pts[1]) + Integer.parseInt(pts[2]);
+							javafx.scene.control.Label lblGrade = new javafx.scene.control.Label("Grade Given: " + total + "/30");
+							lblGrade.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 12));
+							lblGrade.setTextFill(javafx.scene.paint.Color.web("#065f46"));
+							gradeBox.getChildren().add(lblGrade);
+							replyBox.getChildren().add(gradeBox);
+						}
 					}
 				}
 
