@@ -155,6 +155,7 @@ public class ViewAdminHome {
 	 * * @param user specifies the User for this GUI and it's methods
 	 * */
 	public static void displayAdminHome(Stage ps, User user) {
+		applicationMain.FoundationsMain.activeHomePage = 1;
 		theUser = user;
 		theStage = ps;
 		
@@ -176,8 +177,16 @@ public class ViewAdminHome {
 		}
 
     	theStage.setTitle("CSE 360 Foundation Code: Admin Home Page");
-        theStage.setScene(theAdminHomeScene);
-		theStage.show();
+    	Scene currentScene = theStage.getScene();
+		if (currentScene == null) {
+			theStage.setScene(theAdminHomeScene);
+		} else {
+			if (theRootPane.getScene() == theAdminHomeScene) {
+				theAdminHomeScene.setRoot(new javafx.scene.layout.Pane());
+			}
+			currentScene.setRoot(theRootPane);
+		}
+        theStage.show();
 	}
 	
 	/**********

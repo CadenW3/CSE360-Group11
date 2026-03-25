@@ -138,6 +138,7 @@ public class ControllerAdminHome {
 		protected static void setOnetimePassword() {
 			// Create a custom dialog window
 			javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
+			dialog.initOwner(ViewAdminHome.theStage);
 			dialog.setTitle("One-Time Password");
 			dialog.setHeaderText("Select a User to Generate OTP");
 
@@ -196,6 +197,7 @@ public class ControllerAdminHome {
 					theDatabase.resetPassword(targetUser, otp);
 					
 					Alert alert = new Alert(AlertType.INFORMATION);
+					alert.initOwner(ViewAdminHome.theStage);
 					alert.setTitle("OTP Generated Successfully");
 					alert.setHeaderText("One-Time Password set for " + targetUser);
 					
@@ -284,6 +286,7 @@ public class ControllerAdminHome {
 		protected static void deleteUser() {
 			// Create a custom dialog window
 			javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
+			dialog.initOwner(ViewAdminHome.theStage);
 			dialog.setTitle("Delete User");
 			dialog.setHeaderText("Select a User to Delete");
 
@@ -338,6 +341,7 @@ public class ControllerAdminHome {
 				
 				// Show the "Are you sure?" confirmation popup
 				Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
+				confirmAlert.initOwner(ViewAdminHome.theStage);
 				confirmAlert.setTitle("Confirm Deletion");
 				confirmAlert.setHeaderText("Are you sure?");
 				confirmAlert.setContentText("Are you sure you want to permanently delete user '" + targetUser + "'?");
@@ -373,6 +377,7 @@ public class ControllerAdminHome {
 				String report = String.join("\n", userList);
 						
 				Alert alert = new Alert(AlertType.INFORMATION);
+				alert.initOwner(ViewAdminHome.theStage);
 				alert.setTitle("System User List");
 				alert.setHeaderText("Registered Users");
 						
@@ -413,6 +418,7 @@ public class ControllerAdminHome {
 		
 		// Show the code to the Admin in a popup
 		Alert alert = new Alert(AlertType.INFORMATION);
+		alert.initOwner(ViewAdminHome.theStage);
 		alert.setTitle("Invitation Sent");
 		alert.setHeaderText("Invitation Code Generated");
 		alert.setContentText("The invitation has been logged.\n" +
@@ -423,6 +429,7 @@ public class ControllerAdminHome {
 	
 	protected static void manageInvitations() {
 		javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
+		dialog.initOwner(ViewAdminHome.theStage);
 		dialog.setTitle("Manage Invitations");
 		dialog.setHeaderText("Select an Invitation to Delete");
 
@@ -483,6 +490,7 @@ public class ControllerAdminHome {
 			
 			// Show the "Are you sure?" confirmation popup
 			Alert confirmAlert = new Alert(AlertType.CONFIRMATION);
+			confirmAlert.initOwner(ViewAdminHome.theStage);
 			confirmAlert.setTitle("Confirm Deletion");
 			confirmAlert.setHeaderText("Are you sure?");
 			confirmAlert.setContentText("Are you sure you want to delete invitation code '" + targetCode + "'?");
@@ -507,8 +515,18 @@ public class ControllerAdminHome {
 	}
 	
 	protected static void addRemoveRoles() {
-		guiAddRemoveRoles.ViewAddRemoveRoles.displayAddRemoveRoles(ViewAdminHome.theStage, 
-				ViewAdminHome.theUser);
+		//Create a brand new Stage (Window) for the Add/Remove Roles popup
+		javafx.stage.Stage popupStage = new javafx.stage.Stage();
+				
+		//LINK IT TO THE MAIN WINDOW SO IT DOESN'T MINIMIZE ON CLOSE
+		popupStage.initOwner(ViewAdminHome.theStage);
+				
+		//Make it a MODAL window (blocks the background window until you close it)
+		popupStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+				
+		//Pass the NEW popupStage to the view instead of the main stage
+		guiAddRemoveRoles.ViewAddRemoveRoles.displayAddRemoveRoles(popupStage, 
+		ViewAdminHome.theUser);
 	}
 	
 	protected static boolean invalidEmailAddress(String emailAddress) {

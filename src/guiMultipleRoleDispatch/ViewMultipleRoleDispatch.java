@@ -115,8 +115,16 @@ public class ViewMultipleRoleDispatch {
 		
 		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundation Code: Multiple Role Dispatch");	
-		theStage.setScene(theMultipleRoleDispatchScene);		// Set this page onto the stage
-		theStage.show();										// Display it to the user
+		Scene currentScene = theStage.getScene();
+		if (currentScene == null) {
+			theStage.setScene(theMultipleRoleDispatchScene);
+		} else {
+			if (theRootPane.getScene() == theMultipleRoleDispatchScene) {
+				theMultipleRoleDispatchScene.setRoot(new javafx.scene.layout.Pane());
+			}
+			currentScene.setRoot(theRootPane);
+		}
+	    theStage.show();									// Display it to the user
 	}
 
 

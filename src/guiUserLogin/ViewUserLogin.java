@@ -93,8 +93,17 @@ public class ViewUserLogin {
 		
 		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundation Code: User Login Page");		
-		theStage.setScene(theUserLoginScene);
-		theStage.show();
+		Scene currentScene = theStage.getScene();
+		if (currentScene == null) {
+			theStage.setScene(theUserLoginScene); // Set it the very first time
+		} else {
+			// Detach the root from the old hidden scene, and attach it to the active window
+			if (theRootPane.getScene() == theUserLoginScene) {
+				theUserLoginScene.setRoot(new javafx.scene.layout.Pane());
+			}
+			currentScene.setRoot(theRootPane);
+		}
+	    theStage.show();
 	}
 
 	/**********

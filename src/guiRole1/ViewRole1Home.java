@@ -153,8 +153,16 @@ public class ViewRole1Home {
 
 		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundations: Staff Home Page");
-		theStage.setScene(theViewRole1HomeScene);
-		theStage.show();
+		Scene currentScene = theStage.getScene();
+		if (currentScene == null) {
+			theStage.setScene(theViewRole1HomeScene);
+		} else {
+			if (theRootPane.getScene() == theViewRole1HomeScene) {
+				theViewRole1HomeScene.setRoot(new javafx.scene.layout.Pane());
+			}
+			currentScene.setRoot(theRootPane);
+		}
+	    theStage.show();
 	}
 	
 	/**********

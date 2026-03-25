@@ -278,8 +278,7 @@ public class ControllerAddRemoveRoles {
 	 * 
 	 */
 	protected static void performReturn() {
-		guiAdminHome.ViewAdminHome.displayAdminHome(ViewAddRemoveRoles.theStage,
-				ViewAddRemoveRoles.theUser);
+		ViewAddRemoveRoles.theStage.close();
 	}
 	
 	

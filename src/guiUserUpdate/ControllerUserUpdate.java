@@ -38,6 +38,8 @@ public class ControllerUserUpdate {
 	 * * @param theUser specifies the user so we go to the right page and so the right information
 	 */
 	protected static void goToUserHomePage(Stage theStage, User theUser) {
+		//Remember if the window was currently in full screen
+		boolean wasMaximized = theStage.isMaximized();
 		
 		int theRole = applicationMain.FoundationsMain.activeHomePage;
 
@@ -52,8 +54,22 @@ public class ControllerUserUpdate {
 			guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
 			break;
 		default: 
-			guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(theStage, theUser);
+			//Fallback routing just in case activeHomePage gets lost
+			if (theUser.getAdminRole() && !theUser.getNewRole1() && !theUser.getNewRole2()) {
+				guiAdminHome.ViewAdminHome.displayAdminHome(theStage, theUser);
+			} else if (!theUser.getAdminRole() && theUser.getNewRole1() && !theUser.getNewRole2()) {
+				guiRole1.ViewRole1Home.displayRole1Home(theStage, theUser);
+			} else if (!theUser.getAdminRole() && !theUser.getNewRole1() && theUser.getNewRole2()) {
+				guiRole2.ViewRole2Home.displayRole2Home(theStage, theUser);
+			} else {
+				guiMultipleRoleDispatch.ViewMultipleRoleDispatch.displayMultipleRoleDispatch(theStage, theUser);
+			}
 			break;
+		}
+		
+		//Force the window back to full screen if it was maximized
+		if (wasMaximized) {
+			theStage.setMaximized(true);
 		}
  	}
 	

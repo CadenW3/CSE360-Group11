@@ -102,8 +102,16 @@ public class ViewNewAccount {
     			text_Password1, label_PasswordStrength, text_Password2, button_UserSetup, button_Quit);    	
 
 		theStage.setTitle("CSE 360 Foundation Code: New User Account Setup");	
-        theStage.setScene(theNewAccountScene);
-		theStage.show();
+		Scene currentScene = theStage.getScene();
+		if (currentScene == null) {
+			theStage.setScene(theNewAccountScene);
+		} else {
+			if (theRootPane.getScene() == theNewAccountScene) {
+				theNewAccountScene.setRoot(new javafx.scene.layout.Pane());
+			}
+			currentScene.setRoot(theRootPane);
+		}
+	    theStage.show();
 	}
 	
 	private ViewNewAccount() {

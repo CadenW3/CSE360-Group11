@@ -125,6 +125,7 @@ public class ViewRole2Home {
 	public static void displayRole2Home(Stage ps, User user) {
 		
 		// Establish the references to the GUI and the current user
+		applicationMain.FoundationsMain.activeHomePage = 3;
 		theStage = ps;
 		theUser = user;
 		
@@ -149,8 +150,16 @@ public class ViewRole2Home {
 
 		// Set the title for the window, display the page, and wait for the Admin to do something
 		theStage.setTitle("CSE 360 Foundations: Student Home Page");
-		theStage.setScene(theRole2HomeScene);						// Set this page onto the stage
-		theStage.show();											// Display it to the user
+		Scene currentScene = theStage.getScene();
+		if (currentScene == null) {
+			theStage.setScene(theRole2HomeScene);
+		} else {
+			if (theRootPane.getScene() == theRole2HomeScene) {
+				theRole2HomeScene.setRoot(new javafx.scene.layout.Pane());
+			}
+			currentScene.setRoot(theRootPane);
+		}
+	    theStage.show();											// Display it to the user
 	}
 	
 	/**********

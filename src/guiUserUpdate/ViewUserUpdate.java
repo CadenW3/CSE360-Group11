@@ -182,8 +182,16 @@ public class ViewUserUpdate {
 
 		// Set the title for the window, display the page, and wait for the Admin to do something
     	theStage.setTitle("CSE 360 Foundation Code: Update User Account Details");
-        theStage.setScene(theUserUpdateScene);
-		theStage.show();
+    	Scene currentScene = theStage.getScene();
+		if (currentScene == null) {
+			theStage.setScene(theUserUpdateScene);
+		} else {
+			if (theRootPane.getScene() == theUserUpdateScene) {
+				theUserUpdateScene.setRoot(new javafx.scene.layout.Pane());
+			}
+			currentScene.setRoot(theRootPane);
+		}
+        theStage.show();
 	}
 
 	
