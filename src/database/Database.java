@@ -293,14 +293,12 @@ public class Database {
 		
 	}
 	
-/*******
- *  <p> Method: List getUserList() </p>
- *  
- *  <P> Description: Generate an List of Strings, one for each user in the database,
- *  starting with "<Select User>" at the start of the list. </p>
- *  
- *  @return a list of userNames found in the database.
- */
+	/**
+	 * Generate a List of Strings, one for each user in the database,
+	 * starting with "&lt;Select User&gt;" at the start of the list.
+	 *
+	 * @return a list of userNames found in the database.
+	 */
 	public List<String> getUserList () {
 		List<String> userList = new ArrayList<String>();
 		userList.add("<Select a User>");
@@ -1121,8 +1119,12 @@ public class Database {
 		} 
 	}
 	
-
-	//Checks if a username exists in the database.
+	/**
+	 * Checks if a username exists in the database.
+	 *
+	 * @param username the username to check for existence
+	 * @return true if the user exists, false otherwise
+	 */
 		public boolean usernameExists(String username) {
 			try {
 				String query = "SELECT COUNT(*) as count FROM userDB WHERE userName = ?";
@@ -1141,6 +1143,9 @@ public class Database {
 
 		/**
 		 * Deletes a user from the database.
+		 *
+		 * @param username the username of the user to delete
+		 * @throws SQLException if a database access error occurs
 		 */
 		public void deleteUser(String username) throws SQLException {
 			String query = "DELETE FROM userDB WHERE userName = ?";
@@ -1149,658 +1154,985 @@ public class Database {
 			pstmt.executeUpdate();
 		}
 
-		// Resets a user's password to a new One-Time Password (OTP).
-				public void resetPassword(String username, String newPassword) throws SQLException {
-					// Safely add a BIGINT column to bypass all timezone/timestamp bugs in H2 SQL
-					try {
-						connection.createStatement().execute("ALTER TABLE userDB ADD COLUMN IF NOT EXISTS otpExpiryMs BIGINT DEFAULT 0");
-					} catch (Exception ignore) {}
-					
-					// UPPER() ensures case-insensitivity so "admin" and "Admin" don't mismatch
-					String query = "UPDATE userDB SET password = ?, otpExpiryMs = ? WHERE UPPER(userName) = UPPER(?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, newPassword.trim());
-						// Store exactly 24 hours from right now in pure milliseconds
-						pstmt.setLong(2, System.currentTimeMillis() + 86400000L);
-						pstmt.setString(3, username.trim());
-						
-						int rowsAffected = pstmt.executeUpdate();
-						if (rowsAffected == 0) {
-							throw new SQLException("Update failed: Could not find user.");
-						}
-					}
-				}
-
-				public void addInvitation(String code) throws SQLException {
-					String query = "INSERT INTO InvitationCodes (code) VALUES (?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, code);
-						pstmt.executeUpdate();
-					}
-				}
-
-				public int getInvitationCount() {
-					return getNumberOfInvitations();
-				}
-
-				public boolean validInvitation(String code) {
-					String query = "SELECT COUNT(*) FROM InvitationCodes WHERE code = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, code);
-						ResultSet rs = pstmt.executeQuery();
-						if (rs.next()) {
-							return rs.getInt(1) > 0;
-						}
-					} catch (SQLException e) {
-						e.printStackTrace();
-					}
-					return false;
-				}
+		/**
+		 * Resets a user's password to a new One-Time Password (OTP) and sets a 24-hour expiration.
+		 *
+		 * @param username the username of the account to reset
+		 * @param newPassword the new One-Time Password to assign to the user
+		 * @throws SQLException if there is an issue updating the database
+		 */
+		public void resetPassword(String username, String newPassword) throws SQLException {
+			// Safely add a BIGINT column to bypass all timezone/timestamp bugs in H2 SQL
+			try {
+				connection.createStatement().execute("ALTER TABLE userDB ADD COLUMN IF NOT EXISTS otpExpiryMs BIGINT DEFAULT 0");
+			} catch (Exception ignore) {}
+			
+			// UPPER() ensures case-insensitivity so "admin" and "Admin" don't mismatch
+			String query = "UPDATE userDB SET password = ?, otpExpiryMs = ? WHERE UPPER(userName) = UPPER(?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, newPassword.trim());
+				// Store exactly 24 hours from right now in pure milliseconds
+				pstmt.setLong(2, System.currentTimeMillis() + 86400000L);
+				pstmt.setString(3, username.trim());
 				
-				// Fetches the active invitations as a formatted list for the UI
-				public java.util.List<String> getInvitationList() {
-					java.util.List<String> list = new java.util.ArrayList<>();
-					String query = "SELECT code, emailAddress, role FROM InvitationCodes"; 
-					try (Statement stmt = connection.createStatement();
-					     ResultSet rs = stmt.executeQuery(query)) {
-						while (rs.next()) {
-							String code = rs.getString("code");
-							String email = rs.getString("emailAddress");
-							String role = rs.getString("role");
-							if (email == null || email.isEmpty()) email = "None";
-							if (role == null || role.isEmpty()) role = "None";
-							
-							list.add(String.format("%-8s | %-25s | %s", code, email, role));
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return list;
+				int rowsAffected = pstmt.executeUpdate();
+				if (rowsAffected == 0) {
+					throw new SQLException("Update failed: Could not find user.");
 				}
-
-				public void deleteInvitation(String code) throws SQLException {
-					String query = "DELETE FROM InvitationCodes WHERE code = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, code);
-						pstmt.executeUpdate();
-					}
-				}
-
-				// Checks if an OTP has expired (Pure Java LONG math to completely avoid SQL timezone bugs)
-				public boolean isAccountExpired(String username) {
-					// Catch cases where the column might not exist yet
-					try {
-						connection.createStatement().execute("ALTER TABLE userDB ADD COLUMN IF NOT EXISTS otpExpiryMs BIGINT DEFAULT 0");
-					} catch (Exception ignore) {}
-
-					String query = "SELECT otpExpiryMs FROM userDB WHERE UPPER(userName) = UPPER(?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username.trim());
-						ResultSet rs = pstmt.executeQuery();
-						if (rs.next()) {
-							long expiry = rs.getLong("otpExpiryMs");
-							// If expiry is set (greater than 0) and the current time has passed it
-							if (expiry > 0 && System.currentTimeMillis() > expiry) {
-								return true;
-							}
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return false; // Not expired
-				}
-
-				// Burns the OTP immediately after successful login so it can NEVER be used again
-				public void burnOTP(String username) {
-					// Sets the expiration to 1 (which translates to the year 1970) to instantly expire it
-					String query = "UPDATE userDB SET otpExpiryMs = 1 WHERE UPPER(userName) = UPPER(?) AND otpExpiryMs > 0";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username.trim());
-						pstmt.executeUpdate();
-					} catch (SQLException e) { 
-						e.printStackTrace();
-					}
-				}
-				
-				// Checks if the user is currently logging in with an active OTP
-				public boolean isUsingOTP(String username) {
-					String query = "SELECT otpExpiryMs FROM userDB WHERE UPPER(userName) = UPPER(?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username.trim());
-						ResultSet rs = pstmt.executeQuery();
-						if (rs.next()) {
-							long expiry = rs.getLong("otpExpiryMs");
-							return (expiry > System.currentTimeMillis());
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return false;
-				}
-
-				// Updates the user's password and clears the OTP flag so it becomes a standard password again
-				public void updatePassword(String username, String newPassword) {
-					String query = "UPDATE userDB SET password = ?, otpExpiryMs = 0 WHERE UPPER(userName) = UPPER(?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, newPassword.trim());
-						pstmt.setString(2, username.trim());
-						pstmt.executeUpdate();
-					} catch (SQLException e) {
-						e.printStackTrace();
-					}
-				}
-
-				// CREATE Thread
-				public void createThread(String title, String topic, String createdBy) throws SQLException {
-					String query = "INSERT INTO DiscussionThreads (title, topic, createdBy) VALUES (?, ?, ?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, title);
-						pstmt.setString(2, topic);
-						pstmt.setString(3, createdBy);
-						pstmt.executeUpdate();
-					}
-				}
-
-				// READ Threads
-				public java.util.List<String> getThreadList() {
-					java.util.List<String> list = new java.util.ArrayList<>();
-					String query = "SELECT id, title, topic, createdBy FROM DiscussionThreads";
-					try (Statement stmt = connection.createStatement();
-						 ResultSet rs = stmt.executeQuery(query)) {
-						while (rs.next()) {
-							// Format: "ID | Title | Topic | Creator"
-							list.add(rs.getInt("id") + " | " + rs.getString("title") + " | " + rs.getString("topic") + " | " + rs.getString("createdBy"));
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return list;
-				}
-
-				// UPDATE Thread
-				public void updateThread(int id, String newTitle, String newTopic) throws SQLException {
-					String query = "UPDATE DiscussionThreads SET title = ?, topic = ? WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, newTitle);
-						pstmt.setString(2, newTopic);
-						pstmt.setInt(3, id);
-						pstmt.executeUpdate();
-					}
-				}
-
-				// DELETE Thread
-				public void deleteThread(int id) throws SQLException {
-					String query = "DELETE FROM DiscussionThreads WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id);
-						pstmt.executeUpdate();
-					}
-				}
-				
-				
-				public void createReply(int threadId, int parentReplyId, String content, String createdBy) throws SQLException {
-					String query = "INSERT INTO Replies (threadId, parentReplyId, content, createdBy) VALUES (?, ?, ?, ?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, threadId);
-						pstmt.setInt(2, parentReplyId);
-						pstmt.setString(3, content);
-						pstmt.setString(4, createdBy);
-						pstmt.executeUpdate();
-					}
-				}
-
-				// Gets all replies for a specific thread
-				public java.util.List<String> getRepliesForThread(int threadId) {
-					java.util.List<String> list = new java.util.ArrayList<>();
-					String query = "SELECT id, parentReplyId, content, createdBy FROM Replies WHERE threadId = ? ORDER BY id ASC";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, threadId);
-						try (ResultSet rs = pstmt.executeQuery()) {
-							while (rs.next()) {
-								list.add(rs.getInt("id") + " | " + rs.getInt("parentReplyId") + " | " 
-										+ rs.getString("content") + " | " + rs.getString("createdBy"));
-							}
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return list;
-				}
-				
-				// Retrieves a single thread's full details by its ID
-				public String getThread(int threadId) {
-					String query = "SELECT id, title, topic, createdBy FROM DiscussionThreads WHERE id = ?";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, threadId);
-						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
-							if (rs.next()) {
-								return rs.getInt("id") + " | " + rs.getString("title") + " | " 
-										+ rs.getString("topic") + " | " + rs.getString("createdBy");
-							}
-						}
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-					return null;
-				}
-
-				// Retrieves all staff members for the dropdown menu
-				public java.util.List<String> getStaffUsers() {
-					java.util.List<String> list = new java.util.ArrayList<>();
-					//The database column is newRole1 
-					String query = "SELECT userName FROM userDB WHERE newRole1 = TRUE";
-					
-					try (java.sql.Statement stmt = connection.createStatement();
-						 java.sql.ResultSet rs = stmt.executeQuery(query)) {
-						while (rs.next()) {
-							list.add(rs.getString("userName"));
-						}
-					} catch (java.sql.SQLException e) { 
-						e.printStackTrace(); 
-					}
-					return list;
-				}
-
-				public void createDirectMessage(String sender, String receiver, String content) throws java.sql.SQLException {
-					String query = "INSERT INTO DirectMessages (sender, receiver, content) VALUES (?, ?, ?)";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, sender);
-						pstmt.setString(2, receiver);
-						pstmt.setString(3, content);
-						pstmt.executeUpdate();
-					}
-				}
-
-				public java.util.List<String> getDirectMessages(String user1, String user2) {
-					java.util.List<String> list = new java.util.ArrayList<>();
-					String query = "SELECT sender, content FROM DirectMessages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) ORDER BY id ASC";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, user1);
-						pstmt.setString(2, user2);
-						pstmt.setString(3, user2);
-						pstmt.setString(4, user1);
-						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
-							while (rs.next()) {
-								list.add(rs.getString("sender") + " | " + rs.getString("content"));
-							}
-						}
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-					return list;
-				}
-				
-				// Clears all existing direct messages from the database
-				public void clearAllMessages() {
-					try (java.sql.Statement stmt = connection.createStatement()) {
-						stmt.execute("DELETE FROM DirectMessages");
-						System.out.println("All messages have been cleared.");
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-				}
-
-				// Retrieves all student members so Staff can message them
-				public java.util.List<String> getStudentUsers() {
-					java.util.List<String> list = new java.util.ArrayList<>();
-					// newRole2 is the database column for Students
-					String query = "SELECT userName FROM userDB WHERE newRole2 = TRUE";
-					try (java.sql.Statement stmt = connection.createStatement();
-						 java.sql.ResultSet rs = stmt.executeQuery(query)) {
-						while (rs.next()) {
-							list.add(rs.getString("userName"));
-						}
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-					return list;
-				}
-				
-				// --- QUESTIONS OPERATIONS ---
-				public void createQuestion(String title, String topic, String createdBy) {
-					String query = "INSERT INTO Questions (title, topic, createdBy) VALUES (?, ?, ?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, title); pstmt.setString(2, topic); pstmt.setString(3, createdBy);
-						pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-
-				public java.util.List<String> getQuestionList() {
-					java.util.List<String> list = new java.util.ArrayList<>();
-					String query = "SELECT id, title, topic, createdBy FROM Questions";
-					try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
-						while (rs.next()) list.add(rs.getInt("id") + " | " + rs.getString("title") + " | " + rs.getString("topic") + " | " + rs.getString("createdBy"));
-					} catch (SQLException e) { e.printStackTrace(); }
-					return list;
-				}
-
-				public String getQuestion(int id) {
-					String query = "SELECT id, title, topic, createdBy FROM Questions WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id);
-						try (ResultSet rs = pstmt.executeQuery()) {
-							if (rs.next()) return rs.getInt("id") + " | " + rs.getString("title") + " | " + rs.getString("topic") + " | " + rs.getString("createdBy");
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return null;
-				}
-
-				public void createQuestionReply(int questionId, int parentReplyId, String content, String createdBy) {
-					String query = "INSERT INTO QuestionReplies (questionId, parentReplyId, content, createdBy) VALUES (?, ?, ?, ?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, questionId); pstmt.setInt(2, parentReplyId); pstmt.setString(3, content); pstmt.setString(4, createdBy);
-						pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-
-				public java.util.List<String> getRepliesForQuestion(int questionId) {
-					java.util.List<String> list = new java.util.ArrayList<>();
-					String query = "SELECT id, parentReplyId, content, createdBy FROM QuestionReplies WHERE questionId = ? ORDER BY id ASC";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, questionId);
-						try (ResultSet rs = pstmt.executeQuery()) {
-							while (rs.next()) list.add(rs.getInt("id") + " | " + rs.getInt("parentReplyId") + " | " + rs.getString("content") + " | " + rs.getString("createdBy"));
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return list;
-				}
-
-				// --- UNREAD POST TRACKING ---
-				public boolean hasReadPost(String username, int postId, String postType) {
-					String query = "SELECT COUNT(*) FROM ReadPosts WHERE username = ? AND postId = ? AND postType = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username); pstmt.setInt(2, postId); pstmt.setString(3, postType);
-						try (ResultSet rs = pstmt.executeQuery()) {
-							if (rs.next()) return rs.getInt(1) > 0;
-						}
-					} catch (SQLException e) { e.printStackTrace(); }
-					return false;
-				}
-
-				public void markPostAsRead(String username, int postId, String postType) {
-					if (hasReadPost(username, postId, postType)) return; // Already read
-					String query = "INSERT INTO ReadPosts (username, postId, postType) VALUES (?, ?, ?)";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username); pstmt.setInt(2, postId); pstmt.setString(3, postType);
-						pstmt.executeUpdate();
-					} catch (SQLException e) {}
-				}
-				
-				// Automatically updates the database schema safely
-				public void setupGradingAndTimestamps() {
-					try {
-						statement.execute("ALTER TABLE DiscussionThreads ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-						statement.execute("ALTER TABLE Replies ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-						statement.execute("ALTER TABLE Questions ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-						statement.execute("ALTER TABLE QuestionReplies ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-
-						String gradesTable = "CREATE TABLE IF NOT EXISTS Grades ("
-								+ "replyId INT PRIMARY KEY, "
-								+ "wordScore INT, "
-								+ "qualityScore INT, "
-								+ "timeScore INT)";
-						statement.execute(gradesTable);
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-				}
-
-				public String getTimestampStr(int id, String table) {
-					String query = "SELECT createdAt FROM " + table + " WHERE id = ?";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id);
-						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
-							if (rs.next() && rs.getTimestamp(1) != null) {
-								return new java.text.SimpleDateFormat("MMM dd, yyyy h:mm a").format(rs.getTimestamp(1));
-							}
-						}
-					} catch (Exception e) {}
-					return "Just now"; // Default for newly created rows before refresh
-				}
-
-				public void saveGrade(int replyId, int wordScore, int qualityScore, int timeScore) {
-					String query = "MERGE INTO Grades (replyId, wordScore, qualityScore, timeScore) KEY (replyId) VALUES (?, ?, ?, ?)";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, replyId); pstmt.setInt(2, wordScore); pstmt.setInt(3, qualityScore); pstmt.setInt(4, timeScore);
-						pstmt.executeUpdate();
-					} catch (Exception e) { e.printStackTrace(); }
-				}
-
-				public String getGrade(int replyId) {
-					String query = "SELECT wordScore, qualityScore, timeScore FROM Grades WHERE replyId = ?";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, replyId);
-						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
-							if (rs.next()) return rs.getInt(1) + "|" + rs.getInt(2) + "|" + rs.getInt(3);
-						}
-					} catch (Exception e) {}
-					return null;
-				}
-				
-				public void softDeleteThread(int id) {
-					String query = "UPDATE DiscussionThreads SET title = '[Deleted]', topic = '[This post was deleted.]' WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				public void softDeleteQuestion(int id) {
-					String query = "UPDATE Questions SET title = '[Deleted]', topic = '[This post was deleted.]' WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				public void softDeleteReply(int id) {
-					String query = "UPDATE Replies SET content = '[This post was deleted.]' WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				public void softDeleteQuestionReply(int id) {
-					String query = "UPDATE QuestionReplies SET content = '[This post was deleted.]' WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				
-				public void deleteQuestion(int id) {
-					String query = "DELETE FROM Questions WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				public void deleteReply(int id) {
-					String query = "DELETE FROM Replies WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				public void deleteQuestionReply(int id) {
-					String query = "DELETE FROM QuestionReplies WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				
-				// --- EDIT & MODERATION OPERATIONS ---
-				public void updateReply(int id, String newContent) {
-					String query = "UPDATE Replies SET content = ? WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, newContent); pstmt.setInt(2, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				public void updateQuestionReply(int id, String newContent) {
-					String query = "UPDATE QuestionReplies SET content = ? WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, newContent); pstmt.setInt(2, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				public void updateQuestion(int id, String newTitle, String newTopic) {
-					String query = "UPDATE Questions SET title = ?, topic = ? WHERE id = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, newTitle); pstmt.setString(2, newTopic); pstmt.setInt(3, id); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				public void deleteAllRepliesForThread(int threadId) {
-					String query = "DELETE FROM Replies WHERE threadId = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, threadId); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				public void deleteAllRepliesForQuestion(int questionId) {
-					String query = "DELETE FROM QuestionReplies WHERE questionId = ?";
-					try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setInt(1, questionId); pstmt.executeUpdate();
-					} catch (SQLException e) { e.printStackTrace(); }
-				}
-				
-				public int getOrCreateGeneralThread() {
-					String query = "SELECT id FROM DiscussionThreads WHERE title = 'General'";
-					try (PreparedStatement pstmt = connection.prepareStatement(query);
-						 ResultSet rs = pstmt.executeQuery()) {
-						if (rs.next()) return rs.getInt("id");
-					} catch (SQLException e) {}
-					
-					try (PreparedStatement pstmt = connection.prepareStatement("INSERT INTO DiscussionThreads (title, topic, createdBy) VALUES ('General', 'General Discussion', 'System')")) {
-						pstmt.executeUpdate();
-					} catch (SQLException e) {}
-					
-					try (PreparedStatement pstmt = connection.prepareStatement(query);
-						 ResultSet rs = pstmt.executeQuery()) {
-						if (rs.next()) return rs.getInt("id");
-					} catch (SQLException e) {}
-					return 1;
-				}
-				
-				// --- ADMIN REQUESTS & TEMP ADMIN OPERATIONS ---
-				public boolean isTempAdmin(String username) {
-					if (username == null || username.trim().isEmpty()) return false;
-					String query = "SELECT expiry_time FROM TempAdmins WHERE username = ?";
-					boolean isExpired = false;
-					boolean isActive = false;
-					
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username);
-						try (java.sql.ResultSet rs = pstmt.executeQuery()) {
-							if (rs.next()) {
-								long expiry = rs.getLong("expiry_time");
-								if (System.currentTimeMillis() < expiry) {
-									isActive = true;
-								} else {
-									isExpired = true;
-								}
-							}
-						}
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-					
-					if (isExpired) {
-						try (java.sql.PreparedStatement del = connection.prepareStatement("DELETE FROM TempAdmins WHERE username = ?")) {
-							del.setString(1, username);
-							del.executeUpdate();
-						} catch (java.sql.SQLException e) { e.printStackTrace(); }
-					}
-					
-					return isActive;
-				}
-
-				public void submitAdminRequest(String username, String message) {
-					String query = "INSERT INTO AdminRequests (username, message, status, admin_notes, was_denied) VALUES (?, ?, 'Pending', '', 0)";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, username);
-						pstmt.setString(2, message);
-						pstmt.executeUpdate();
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-				}
-				
-				public void resubmitAdminRequest(int id, String message) {
-					String query = "UPDATE AdminRequests SET message = ?, status = 'Pending' WHERE id = ?";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, message);
-						pstmt.setInt(2, id);
-						pstmt.executeUpdate();
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-				}
-				
-				public void acceptAdminRequest(int id, String username, String notes) {
-					String query = "UPDATE AdminRequests SET status = 'Accepted', admin_notes = ? WHERE id = ?";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, notes);
-						pstmt.setInt(2, id);
-						pstmt.executeUpdate();
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-					
-					long expiry = System.currentTimeMillis() + (24L * 60L * 60L * 1000L); // 24 hours
-					// Using standard INSERT OR REPLACE for maximum compatibility
-					String tq = "MERGE INTO TempAdmins (username, expiry_time) KEY (username) VALUES (?, ?)";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(tq)) {
-						pstmt.setString(1, username);
-						pstmt.setLong(2, expiry);
-						pstmt.executeUpdate();
-					} catch (java.sql.SQLException e) {
-						try (java.sql.PreparedStatement fallback = connection.prepareStatement("INSERT OR REPLACE INTO TempAdmins (username, expiry_time) VALUES (?, ?)")) {
-							fallback.setString(1, username);
-							fallback.setLong(2, expiry);
-							fallback.executeUpdate();
-						} catch (java.sql.SQLException ex) { ex.printStackTrace(); }
-					}
-				}
-				
-				public void denyAdminRequest(int id, String notes) {
-					String query = "UPDATE AdminRequests SET status = 'Denied', was_denied = 1, admin_notes = ? WHERE id = ?";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, notes);
-						pstmt.setInt(2, id);
-						pstmt.executeUpdate();
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-				}
-				
-				public void updateAdminRequestNotes(int id, String notes) {
-					String query = "UPDATE AdminRequests SET admin_notes = ? WHERE id = ?";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
-						pstmt.setString(1, notes);
-						pstmt.setInt(2, id);
-						pstmt.executeUpdate();
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-				}
-				
-				public java.util.List<String> getAdminRequests(String statusFilter, String usernameFilter) {
-					java.util.List<String> results = new java.util.ArrayList<>();
-					String query = "SELECT id, username, status, was_denied, message, admin_notes FROM AdminRequests WHERE 1=1";
-					if (statusFilter != null) {
-						if (statusFilter.equals("Closed")) query += " AND status != 'Pending'";
-						else query += " AND status = '" + statusFilter + "'";
-					}
-					if (usernameFilter != null) query += " AND username = '" + usernameFilter + "'";
-					
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query);
-						 java.sql.ResultSet rs = pstmt.executeQuery()) {
-						while (rs.next()) {
-							String req = rs.getInt("id") + "<SEP>" + 
-										 rs.getString("username") + "<SEP>" + 
-										 rs.getString("status") + "<SEP>" + 
-										 rs.getInt("was_denied") + "<SEP>" + 
-										 rs.getString("message") + "<SEP>" + 
-										 (rs.getString("admin_notes") == null ? "" : rs.getString("admin_notes"));
-							results.add(req);
-						}
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-					return results;
-				}
-
-				public java.util.List<String> getListOfUsers() {
-					java.util.List<String> userList = new java.util.ArrayList<>();
-					String query = "SELECT userName, adminRole, newRole1, newRole2 FROM userDB";
-					try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query);
-						 java.sql.ResultSet rs = pstmt.executeQuery()) {
-						while (rs.next()) {
-							String username = rs.getString("userName");
-							boolean adminRole = rs.getBoolean("adminRole");
-							boolean newRole1 = rs.getBoolean("newRole1");
-							boolean newRole2 = rs.getBoolean("newRole2");
-							String roleStr = (adminRole ? "Admin " : "") + (newRole1 ? "Staff " : "") + (newRole2 ? "Student " : "");
-							if (roleStr.isEmpty()) roleStr = "None";
-							userList.add(username + " - Roles: " + roleStr.trim());
-						}
-					} catch (java.sql.SQLException e) { e.printStackTrace(); }
-					return userList;
-				}
-
-				public String generateOTP(String roles, long durationMinutes) {
-					String p = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
-					StringBuilder tempPwd = new StringBuilder();
-					for (int i = 0; i < 6; i++) {
-						tempPwd.append(p.charAt((int) (Math.random() * p.length())));
-					}
-					return tempPwd.toString();
-				}
-				
-				public void deleteGrade(int replyId) {
-				    // Replace "Grades" and "replyId" with your actual table and column names if they are different
-				    String query = "DELETE FROM Grades WHERE replyId = " + replyId;
-				    try {
-				        java.sql.Statement stmt = connection.createStatement();
-				        stmt.executeUpdate(query);
-				    } catch (Exception e) {
-				        e.printStackTrace();
-				    }
-				}
+			}
 		}
+
+		/**
+		 * Adds a new invitation code to the database.
+		 *
+		 * @param code the invitation code to add
+		 * @throws SQLException if there is an error inserting the code
+		 */
+		public void addInvitation(String code) throws SQLException {
+			String query = "INSERT INTO InvitationCodes (code) VALUES (?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, code);
+				pstmt.executeUpdate();
+			}
+		}
+
+		/**
+		 * Gets the total number of active invitations.
+		 *
+		 * @return the count of active invitations
+		 */
+		public int getInvitationCount() {
+			return getNumberOfInvitations();
+		}
+
+		/**
+		 * Checks if a provided invitation code is valid.
+		 *
+		 * @param code the invitation code to check
+		 * @return true if the code is valid and exists, false otherwise
+		 */
+		public boolean validInvitation(String code) {
+			String query = "SELECT COUNT(*) FROM InvitationCodes WHERE code = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, code);
+				ResultSet rs = pstmt.executeQuery();
+				if (rs.next()) {
+					return rs.getInt(1) > 0;
+				}
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+			return false;
+		}
+		
+		/**
+		 * Fetches the active invitations as a formatted list for the UI.
+		 *
+		 * @return a List of formatted strings representing active invitations
+		 */
+		public java.util.List<String> getInvitationList() {
+			java.util.List<String> list = new java.util.ArrayList<>();
+			String query = "SELECT code, emailAddress, role FROM InvitationCodes"; 
+			try (Statement stmt = connection.createStatement();
+			     ResultSet rs = stmt.executeQuery(query)) {
+				while (rs.next()) {
+					String code = rs.getString("code");
+					String email = rs.getString("emailAddress");
+					String role = rs.getString("role");
+					if (email == null || email.isEmpty()) email = "None";
+					if (role == null || role.isEmpty()) role = "None";
+					
+					list.add(String.format("%-8s | %-25s | %s", code, email, role));
+				}
+			} catch (SQLException e) { e.printStackTrace(); }
+			return list;
+		}
+
+		/**
+		 * Deletes an invitation code from the database.
+		 *
+		 * @param code the invitation code to delete
+		 * @throws SQLException if there is a database error
+		 */
+		public void deleteInvitation(String code) throws SQLException {
+			String query = "DELETE FROM InvitationCodes WHERE code = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, code);
+				pstmt.executeUpdate();
+			}
+		}
+
+		/**
+		 * Checks if an account's OTP has expired using pure Java LONG math to avoid SQL timezone bugs.
+		 *
+		 * @param username the username to check
+		 * @return true if the OTP is expired, false otherwise
+		 */
+		public boolean isAccountExpired(String username) {
+			// Catch cases where the column might not exist yet
+			try {
+				connection.createStatement().execute("ALTER TABLE userDB ADD COLUMN IF NOT EXISTS otpExpiryMs BIGINT DEFAULT 0");
+			} catch (Exception ignore) {}
+
+			String query = "SELECT otpExpiryMs FROM userDB WHERE UPPER(userName) = UPPER(?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, username.trim());
+				ResultSet rs = pstmt.executeQuery();
+				if (rs.next()) {
+					long expiry = rs.getLong("otpExpiryMs");
+					// If expiry is set (greater than 0) and the current time has passed it
+					if (expiry > 0 && System.currentTimeMillis() > expiry) {
+						return true;
+					}
+				}
+			} catch (SQLException e) { e.printStackTrace(); }
+			return false; // Not expired
+		}
+
+		/**
+		 * Burns the OTP immediately after successful login so it can never be used again.
+		 *
+		 * @param username the username of the account to modify
+		 */
+		public void burnOTP(String username) {
+			// Sets the expiration to 1 (which translates to the year 1970) to instantly expire it
+			String query = "UPDATE userDB SET otpExpiryMs = 1 WHERE UPPER(userName) = UPPER(?) AND otpExpiryMs > 0";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, username.trim());
+				pstmt.executeUpdate();
+			} catch (SQLException e) { 
+				e.printStackTrace();
+			}
+		}
+		
+		/**
+		 * Checks if the user is currently logging in with an active OTP.
+		 *
+		 * @param username the username to check
+		 * @return true if the user is using an active OTP, false otherwise
+		 */
+		public boolean isUsingOTP(String username) {
+			String query = "SELECT otpExpiryMs FROM userDB WHERE UPPER(userName) = UPPER(?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, username.trim());
+				ResultSet rs = pstmt.executeQuery();
+				if (rs.next()) {
+					long expiry = rs.getLong("otpExpiryMs");
+					return (expiry > System.currentTimeMillis());
+				}
+			} catch (SQLException e) { e.printStackTrace(); }
+			return false;
+		}
+
+		/**
+		 * Updates the user's password and clears the OTP flag so it becomes a standard password again.
+		 *
+		 * @param username the username whose password to update
+		 * @param newPassword the new standard password
+		 */
+		public void updatePassword(String username, String newPassword) {
+			String query = "UPDATE userDB SET password = ?, otpExpiryMs = 0 WHERE UPPER(userName) = UPPER(?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, newPassword.trim());
+				pstmt.setString(2, username.trim());
+				pstmt.executeUpdate();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
+
+		/**
+		 * Creates a new discussion thread in the database.
+		 *
+		 * @param title the title of the discussion thread
+		 * @param topic the main topic or description of the thread
+		 * @param createdBy the username of the person creating the thread
+		 * @throws SQLException if there is an error accessing or updating the database
+		 */
+		public void createThread(String title, String topic, String createdBy) throws SQLException {
+			String query = "INSERT INTO DiscussionThreads (title, topic, createdBy) VALUES (?, ?, ?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, title);
+				pstmt.setString(2, topic);
+				pstmt.setString(3, createdBy);
+				pstmt.executeUpdate();
+			}
+		}
+
+		/**
+		 * Retrieves a formatted list of discussion threads.
+		 *
+		 * @return a List of formatted strings representing threads
+		 */
+		public java.util.List<String> getThreadList() {
+			java.util.List<String> list = new java.util.ArrayList<>();
+			String query = "SELECT id, title, topic, createdBy FROM DiscussionThreads";
+			try (Statement stmt = connection.createStatement();
+				 ResultSet rs = stmt.executeQuery(query)) {
+				while (rs.next()) {
+					// Format: "ID | Title | Topic | Creator"
+					list.add(rs.getInt("id") + " | " + rs.getString("title") + " | " + rs.getString("topic") + " | " + rs.getString("createdBy"));
+				}
+			} catch (SQLException e) { e.printStackTrace(); }
+			return list;
+		}
+
+		/**
+		 * Updates a thread's content. 
+		 *
+		 * @param id the ID of the thread
+		 * @param newTitle the new title for the thread
+		 * @param newTopic the new topic for the thread
+		 * @throws SQLException if there is a database error
+		 */
+		public void updateThread(int id, String newTitle, String newTopic) throws SQLException {
+			String query = "UPDATE DiscussionThreads SET title = ?, topic = ? WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, newTitle);
+				pstmt.setString(2, newTopic);
+				pstmt.setInt(3, id);
+				pstmt.executeUpdate();
+			}
+		}
+
+		/**
+		 * Deletes a discussion thread by ID.
+		 *
+		 * @param id the ID of the thread to delete
+		 * @throws SQLException if there is a database error
+		 */
+		public void deleteThread(int id) throws SQLException {
+			String query = "DELETE FROM DiscussionThreads WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id);
+				pstmt.executeUpdate();
+			}
+		}
+		
+		/**
+		 * Creates a reply to a specific discussion thread.
+		 *
+		 * @param threadId the ID of the thread
+		 * @param parentReplyId the ID of the parent reply (0 if direct to thread)
+		 * @param content the text content of the reply
+		 * @param createdBy the username of the reply creator
+		 * @throws SQLException if there is a database error
+		 */
+		public void createReply(int threadId, int parentReplyId, String content, String createdBy) throws SQLException {
+			String query = "INSERT INTO Replies (threadId, parentReplyId, content, createdBy) VALUES (?, ?, ?, ?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, threadId);
+				pstmt.setInt(2, parentReplyId);
+				pstmt.setString(3, content);
+				pstmt.setString(4, createdBy);
+				pstmt.executeUpdate();
+			}
+		}
+
+		/**
+		 * Gets all replies for a specific discussion thread.
+		 *
+		 * @param threadId the ID of the thread
+		 * @return a List of formatted strings representing the replies
+		 */
+		public java.util.List<String> getRepliesForThread(int threadId) {
+			java.util.List<String> list = new java.util.ArrayList<>();
+			String query = "SELECT id, parentReplyId, content, createdBy FROM Replies WHERE threadId = ? ORDER BY id ASC";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, threadId);
+				try (ResultSet rs = pstmt.executeQuery()) {
+					while (rs.next()) {
+						list.add(rs.getInt("id") + " | " + rs.getInt("parentReplyId") + " | " 
+								+ rs.getString("content") + " | " + rs.getString("createdBy"));
+					}
+				}
+			} catch (SQLException e) { e.printStackTrace(); }
+			return list;
+		}
+		
+		/**
+		 * Retrieves a single thread's full details by its ID.
+		 *
+		 * @param threadId the ID of the thread
+		 * @return a formatted string of the thread details, or null if not found
+		 */
+		public String getThread(int threadId) {
+			String query = "SELECT id, title, topic, createdBy FROM DiscussionThreads WHERE id = ?";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, threadId);
+				try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+					if (rs.next()) {
+						return rs.getInt("id") + " | " + rs.getString("title") + " | " 
+								+ rs.getString("topic") + " | " + rs.getString("createdBy");
+					}
+				}
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+			return null;
+		}
+
+		/**
+		 * Retrieves all staff members for the dropdown menu.
+		 *
+		 * @return a List of usernames representing staff members
+		 */
+		public java.util.List<String> getStaffUsers() {
+			java.util.List<String> list = new java.util.ArrayList<>();
+			//The database column is newRole1 
+			String query = "SELECT userName FROM userDB WHERE newRole1 = TRUE";
+			
+			try (java.sql.Statement stmt = connection.createStatement();
+				 java.sql.ResultSet rs = stmt.executeQuery(query)) {
+				while (rs.next()) {
+					list.add(rs.getString("userName"));
+				}
+			} catch (java.sql.SQLException e) { 
+				e.printStackTrace(); 
+			}
+			return list;
+		}
+
+		/**
+		 * Creates a direct message between two users.
+		 *
+		 * @param sender the username of the sender
+		 * @param receiver the username of the receiver
+		 * @param content the content of the message
+		 * @throws java.sql.SQLException if there is a database error
+		 */
+		public void createDirectMessage(String sender, String receiver, String content) throws java.sql.SQLException {
+			String query = "INSERT INTO DirectMessages (sender, receiver, content) VALUES (?, ?, ?)";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, sender);
+				pstmt.setString(2, receiver);
+				pstmt.setString(3, content);
+				pstmt.executeUpdate();
+			}
+		}
+
+		/**
+		 * Retrieves direct messages between two specific users.
+		 *
+		 * @param user1 the first user's username
+		 * @param user2 the second user's username
+		 * @return a List of formatted message strings between the two users
+		 */
+		public java.util.List<String> getDirectMessages(String user1, String user2) {
+			java.util.List<String> list = new java.util.ArrayList<>();
+			String query = "SELECT sender, content FROM DirectMessages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) ORDER BY id ASC";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, user1);
+				pstmt.setString(2, user2);
+				pstmt.setString(3, user2);
+				pstmt.setString(4, user1);
+				try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+					while (rs.next()) {
+						list.add(rs.getString("sender") + " | " + rs.getString("content"));
+					}
+				}
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+			return list;
+		}
+		
+		/**
+		 * Clears all existing direct messages from the database.
+		 */
+		public void clearAllMessages() {
+			try (java.sql.Statement stmt = connection.createStatement()) {
+				stmt.execute("DELETE FROM DirectMessages");
+				System.out.println("All messages have been cleared.");
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Retrieves all student members so Staff can message them.
+		 *
+		 * @return a List of usernames representing students
+		 */
+		public java.util.List<String> getStudentUsers() {
+			java.util.List<String> list = new java.util.ArrayList<>();
+			// newRole2 is the database column for Students
+			String query = "SELECT userName FROM userDB WHERE newRole2 = TRUE";
+			try (java.sql.Statement stmt = connection.createStatement();
+				 java.sql.ResultSet rs = stmt.executeQuery(query)) {
+				while (rs.next()) {
+					list.add(rs.getString("userName"));
+				}
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+			return list;
+		}
+		
+		/**
+		 * Creates a new question.
+		 *
+		 * @param title the title of the question
+		 * @param topic the detailed topic of the question
+		 * @param createdBy the username of the creator
+		 */
+		public void createQuestion(String title, String topic, String createdBy) {
+			String query = "INSERT INTO Questions (title, topic, createdBy) VALUES (?, ?, ?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, title); pstmt.setString(2, topic); pstmt.setString(3, createdBy);
+				pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Retrieves a list of all questions.
+		 *
+		 * @return a List of formatted strings representing questions
+		 */
+		public java.util.List<String> getQuestionList() {
+			java.util.List<String> list = new java.util.ArrayList<>();
+			String query = "SELECT id, title, topic, createdBy FROM Questions";
+			try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
+				while (rs.next()) list.add(rs.getInt("id") + " | " + rs.getString("title") + " | " + rs.getString("topic") + " | " + rs.getString("createdBy"));
+			} catch (SQLException e) { e.printStackTrace(); }
+			return list;
+		}
+
+		/**
+		 * Retrieves a specific question by its ID.
+		 *
+		 * @param id the ID of the question
+		 * @return a formatted string representing the question, or null if not found
+		 */
+		public String getQuestion(int id) {
+			String query = "SELECT id, title, topic, createdBy FROM Questions WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id);
+				try (ResultSet rs = pstmt.executeQuery()) {
+					if (rs.next()) return rs.getInt("id") + " | " + rs.getString("title") + " | " + rs.getString("topic") + " | " + rs.getString("createdBy");
+				}
+			} catch (SQLException e) { e.printStackTrace(); }
+			return null;
+		}
+
+		/**
+		 * Creates a reply to a question.
+		 *
+		 * @param questionId the ID of the question being replied to
+		 * @param parentReplyId the ID of the parent reply (0 if direct)
+		 * @param content the content of the reply
+		 * @param createdBy the username of the creator
+		 */
+		public void createQuestionReply(int questionId, int parentReplyId, String content, String createdBy) {
+			String query = "INSERT INTO QuestionReplies (questionId, parentReplyId, content, createdBy) VALUES (?, ?, ?, ?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, questionId); pstmt.setInt(2, parentReplyId); pstmt.setString(3, content); pstmt.setString(4, createdBy);
+				pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Gets all replies for a specific question.
+		 *
+		 * @param questionId the ID of the question
+		 * @return a List of formatted strings representing the replies
+		 */
+		public java.util.List<String> getRepliesForQuestion(int questionId) {
+			java.util.List<String> list = new java.util.ArrayList<>();
+			String query = "SELECT id, parentReplyId, content, createdBy FROM QuestionReplies WHERE questionId = ? ORDER BY id ASC";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, questionId);
+				try (ResultSet rs = pstmt.executeQuery()) {
+					while (rs.next()) list.add(rs.getInt("id") + " | " + rs.getInt("parentReplyId") + " | " + rs.getString("content") + " | " + rs.getString("createdBy"));
+				}
+			} catch (SQLException e) { e.printStackTrace(); }
+			return list;
+		}
+
+		/**
+		 * Checks if a user has read a specific post.
+		 *
+		 * @param username the username of the reader
+		 * @param postId the ID of the post
+		 * @param postType the type of the post
+		 * @return true if the post has been read, false otherwise
+		 */
+		public boolean hasReadPost(String username, int postId, String postType) {
+			String query = "SELECT COUNT(*) FROM ReadPosts WHERE username = ? AND postId = ? AND postType = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, username); pstmt.setInt(2, postId); pstmt.setString(3, postType);
+				try (ResultSet rs = pstmt.executeQuery()) {
+					if (rs.next()) return rs.getInt(1) > 0;
+				}
+			} catch (SQLException e) { e.printStackTrace(); }
+			return false;
+		}
+
+		/**
+		 * Marks a post as read for a specific user.
+		 *
+		 * @param username the username of the reader
+		 * @param postId the ID of the post
+		 * @param postType the type of the post
+		 */
+		public void markPostAsRead(String username, int postId, String postType) {
+			if (hasReadPost(username, postId, postType)) return; // Already read
+			String query = "INSERT INTO ReadPosts (username, postId, postType) VALUES (?, ?, ?)";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, username); pstmt.setInt(2, postId); pstmt.setString(3, postType);
+				pstmt.executeUpdate();
+			} catch (SQLException e) {}
+		}
+		
+		/**
+		 * Automatically updates the database schema safely to include grading and timestamps.
+		 */
+		public void setupGradingAndTimestamps() {
+			try {
+				statement.execute("ALTER TABLE DiscussionThreads ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+				statement.execute("ALTER TABLE Replies ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+				statement.execute("ALTER TABLE Questions ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+				statement.execute("ALTER TABLE QuestionReplies ADD COLUMN IF NOT EXISTS createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+
+				String gradesTable = "CREATE TABLE IF NOT EXISTS Grades ("
+						+ "replyId INT PRIMARY KEY, "
+						+ "wordScore INT, "
+						+ "qualityScore INT, "
+						+ "timeScore INT)";
+				statement.execute(gradesTable);
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Gets a formatted timestamp string for a record in a specific table.
+		 *
+		 * @param id the ID of the record
+		 * @param table the name of the table
+		 * @return a formatted timestamp string or "Just now" as default
+		 */
+		public String getTimestampStr(int id, String table) {
+			String query = "SELECT createdAt FROM " + table + " WHERE id = ?";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id);
+				try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+					if (rs.next() && rs.getTimestamp(1) != null) {
+						return new java.text.SimpleDateFormat("MMM dd, yyyy h:mm a").format(rs.getTimestamp(1));
+					}
+				}
+			} catch (Exception e) {}
+			return "Just now"; // Default for newly created rows before refresh
+		}
+
+		/**
+		 * Saves a grade for a specific reply.
+		 *
+		 * @param replyId the ID of the reply being graded
+		 * @param wordScore the score for the word count
+		 * @param qualityScore the score for the quality
+		 * @param timeScore the score for the time taken
+		 */
+		public void saveGrade(int replyId, int wordScore, int qualityScore, int timeScore) {
+			String query = "MERGE INTO Grades (replyId, wordScore, qualityScore, timeScore) KEY (replyId) VALUES (?, ?, ?, ?)";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, replyId); pstmt.setInt(2, wordScore); pstmt.setInt(3, qualityScore); pstmt.setInt(4, timeScore);
+				pstmt.executeUpdate();
+			} catch (Exception e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Retrieves a grade for a specific reply.
+		 *
+		 * @param replyId the ID of the reply
+		 * @return a formatted string of the grade scores, or null if not found
+		 */
+		public String getGrade(int replyId) {
+			String query = "SELECT wordScore, qualityScore, timeScore FROM Grades WHERE replyId = ?";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, replyId);
+				try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+					if (rs.next()) return rs.getInt(1) + "|" + rs.getInt(2) + "|" + rs.getInt(3);
+				}
+			} catch (Exception e) {}
+			return null;
+		}
+
+		/**
+		 * Soft deletes a thread by masking content. 
+		 *
+		 * @param id the ID of the thread
+		 */
+		public void softDeleteThread(int id) {
+			String query = "UPDATE DiscussionThreads SET title = '[Deleted]', topic = '[This post was deleted.]' WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Soft deletes a question by masking content.
+		 *
+		 * @param id the ID of the question
+		 */
+		public void softDeleteQuestion(int id) {
+			String query = "UPDATE Questions SET title = '[Deleted]', topic = '[This post was deleted.]' WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Soft deletes a reply by masking content.
+		 *
+		 * @param id the ID of the reply
+		 */
+		public void softDeleteReply(int id) {
+			String query = "UPDATE Replies SET content = '[This post was deleted.]' WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Soft deletes a question reply by masking content.
+		 *
+		 * @param id the ID of the question reply
+		 */
+		public void softDeleteQuestionReply(int id) {
+			String query = "UPDATE QuestionReplies SET content = '[This post was deleted.]' WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+		
+		/**
+		 * Permanently deletes a question from the database.
+		 *
+		 * @param id the ID of the question
+		 */
+		public void deleteQuestion(int id) {
+			String query = "DELETE FROM Questions WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Permanently deletes a reply from the database.
+		 *
+		 * @param id the ID of the reply
+		 */
+		public void deleteReply(int id) {
+			String query = "DELETE FROM Replies WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Permanently deletes a question reply from the database.
+		 *
+		 * @param id the ID of the question reply
+		 */
+		public void deleteQuestionReply(int id) {
+			String query = "DELETE FROM QuestionReplies WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+		
+		// --- EDIT & MODERATION OPERATIONS ---
+
+		/**
+		 * Updates the content of an existing reply.
+		 *
+		 * @param id the ID of the reply
+		 * @param newContent the new content
+		 */
+		public void updateReply(int id, String newContent) {
+			String query = "UPDATE Replies SET content = ? WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, newContent); pstmt.setInt(2, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Updates the content of an existing question reply.
+		 *
+		 * @param id the ID of the question reply
+		 * @param newContent the new content
+		 */
+		public void updateQuestionReply(int id, String newContent) {
+			String query = "UPDATE QuestionReplies SET content = ? WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, newContent); pstmt.setInt(2, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Updates the title and topic of an existing question.
+		 *
+		 * @param id the ID of the question
+		 * @param newTitle the new title
+		 * @param newTopic the new topic
+		 */
+		public void updateQuestion(int id, String newTitle, String newTopic) {
+			String query = "UPDATE Questions SET title = ?, topic = ? WHERE id = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, newTitle); pstmt.setString(2, newTopic); pstmt.setInt(3, id); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Deletes all replies associated with a specific thread.
+		 *
+		 * @param threadId the ID of the thread
+		 */
+		public void deleteAllRepliesForThread(int threadId) {
+			String query = "DELETE FROM Replies WHERE threadId = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, threadId); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+
+		/**
+		 * Deletes all replies associated with a specific question.
+		 *
+		 * @param questionId the ID of the question
+		 */
+		public void deleteAllRepliesForQuestion(int questionId) {
+			String query = "DELETE FROM QuestionReplies WHERE questionId = ?";
+			try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setInt(1, questionId); pstmt.executeUpdate();
+			} catch (SQLException e) { e.printStackTrace(); }
+		}
+		
+		/**
+		 * Gets the ID of the General thread, or creates it if it doesn't exist.
+		 *
+		 * @return the ID of the General thread
+		 */
+		public int getOrCreateGeneralThread() {
+			String query = "SELECT id FROM DiscussionThreads WHERE title = 'General'";
+			try (PreparedStatement pstmt = connection.prepareStatement(query);
+				 ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) return rs.getInt("id");
+			} catch (SQLException e) {}
+			
+			try (PreparedStatement pstmt = connection.prepareStatement("INSERT INTO DiscussionThreads (title, topic, createdBy) VALUES ('General', 'General Discussion', 'System')")) {
+				pstmt.executeUpdate();
+			} catch (SQLException e) {}
+			
+			try (PreparedStatement pstmt = connection.prepareStatement(query);
+				 ResultSet rs = pstmt.executeQuery()) {
+				if (rs.next()) return rs.getInt("id");
+			} catch (SQLException e) {}
+			return 1;
+		}
+		
+		// --- ADMIN REQUESTS & TEMP ADMIN OPERATIONS ---
+
+		/**
+		 * Checks if a user is a temporary admin and if their status is still active.
+		 *
+		 * @param username the username to check
+		 * @return true if the user is an active temporary admin, false otherwise
+		 */
+		public boolean isTempAdmin(String username) {
+			if (username == null || username.trim().isEmpty()) return false;
+			String query = "SELECT expiry_time FROM TempAdmins WHERE username = ?";
+			boolean isExpired = false;
+			boolean isActive = false;
+			
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, username);
+				try (java.sql.ResultSet rs = pstmt.executeQuery()) {
+					if (rs.next()) {
+						long expiry = rs.getLong("expiry_time");
+						if (System.currentTimeMillis() < expiry) {
+							isActive = true;
+						} else {
+							isExpired = true;
+						}
+					}
+				}
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+			
+			if (isExpired) {
+				try (java.sql.PreparedStatement del = connection.prepareStatement("DELETE FROM TempAdmins WHERE username = ?")) {
+					del.setString(1, username);
+					del.executeUpdate();
+				} catch (java.sql.SQLException e) { e.printStackTrace(); }
+			}
+			
+			return isActive;
+		}
+
+		/**
+		 * Submits a new admin request for a user.
+		 *
+		 * @param username the username submitting the request
+		 * @param message the justification message
+		 */
+		public void submitAdminRequest(String username, String message) {
+			String query = "INSERT INTO AdminRequests (username, message, status, admin_notes, was_denied) VALUES (?, ?, 'Pending', '', 0)";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, username);
+				pstmt.setString(2, message);
+				pstmt.executeUpdate();
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+		}
+		
+		/**
+		 * Resubmits an existing admin request.
+		 *
+		 * @param id the ID of the request
+		 * @param message the new message
+		 */
+		public void resubmitAdminRequest(int id, String message) {
+			String query = "UPDATE AdminRequests SET message = ?, status = 'Pending' WHERE id = ?";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, message);
+				pstmt.setInt(2, id);
+				pstmt.executeUpdate();
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+		}
+		
+		/**
+		 * Accepts an admin request and grants temporary admin status for 24 hours.
+		 *
+		 * @param id the ID of the admin request
+		 * @param username the username to grant admin status to
+		 * @param notes the admin notes associated with the decision
+		 */
+		public void acceptAdminRequest(int id, String username, String notes) {
+			String query = "UPDATE AdminRequests SET status = 'Accepted', admin_notes = ? WHERE id = ?";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, notes);
+				pstmt.setInt(2, id);
+				pstmt.executeUpdate();
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+			
+			long expiry = System.currentTimeMillis() + (24L * 60L * 60L * 1000L); // 24 hours
+			// Using standard INSERT OR REPLACE for maximum compatibility
+			String tq = "MERGE INTO TempAdmins (username, expiry_time) KEY (username) VALUES (?, ?)";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(tq)) {
+				pstmt.setString(1, username);
+				pstmt.setLong(2, expiry);
+				pstmt.executeUpdate();
+			} catch (java.sql.SQLException e) {
+				try (java.sql.PreparedStatement fallback = connection.prepareStatement("INSERT OR REPLACE INTO TempAdmins (username, expiry_time) VALUES (?, ?)")) {
+					fallback.setString(1, username);
+					fallback.setLong(2, expiry);
+					fallback.executeUpdate();
+				} catch (java.sql.SQLException ex) { ex.printStackTrace(); }
+			}
+		}
+		
+		/**
+		 * Denies an admin request.
+		 *
+		 * @param id the ID of the admin request
+		 * @param notes the admin notes associated with the decision
+		 */
+		public void denyAdminRequest(int id, String notes) {
+			String query = "UPDATE AdminRequests SET status = 'Denied', was_denied = 1, admin_notes = ? WHERE id = ?";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, notes);
+				pstmt.setInt(2, id);
+				pstmt.executeUpdate();
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+		}
+		
+		/**
+		 * Updates the notes for an admin request.
+		 *
+		 * @param id the ID of the request
+		 * @param notes the new notes
+		 */
+		public void updateAdminRequestNotes(int id, String notes) {
+			String query = "UPDATE AdminRequests SET admin_notes = ? WHERE id = ?";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query)) {
+				pstmt.setString(1, notes);
+				pstmt.setInt(2, id);
+				pstmt.executeUpdate();
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+		}
+		
+		/**
+		 * Retrieves a list of admin requests, optionally filtered by status and username.
+		 *
+		 * @param statusFilter the status to filter by (e.g., "Pending", "Closed"), or null for all
+		 * @param usernameFilter the username to filter by, or null for all
+		 * @return a List of formatted strings representing the requests
+		 */
+		public java.util.List<String> getAdminRequests(String statusFilter, String usernameFilter) {
+			java.util.List<String> results = new java.util.ArrayList<>();
+			String query = "SELECT id, username, status, was_denied, message, admin_notes FROM AdminRequests WHERE 1=1";
+			if (statusFilter != null) {
+				if (statusFilter.equals("Closed")) query += " AND status != 'Pending'";
+				else query += " AND status = '" + statusFilter + "'";
+			}
+			if (usernameFilter != null) query += " AND username = '" + usernameFilter + "'";
+			
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query);
+				 java.sql.ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					String req = rs.getInt("id") + "<SEP>" + 
+								 rs.getString("username") + "<SEP>" + 
+								 rs.getString("status") + "<SEP>" + 
+								 rs.getInt("was_denied") + "<SEP>" + 
+								 rs.getString("message") + "<SEP>" + 
+								 (rs.getString("admin_notes") == null ? "" : rs.getString("admin_notes"));
+					results.add(req);
+				}
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+			return results;
+		}
+
+		/**
+		 * Retrieves a comprehensive list of all users and their roles.
+		 *
+		 * @return a List of strings formatting each user and their roles
+		 */
+		public java.util.List<String> getListOfUsers() {
+			java.util.List<String> userList = new java.util.ArrayList<>();
+			String query = "SELECT userName, adminRole, newRole1, newRole2 FROM userDB";
+			try (java.sql.PreparedStatement pstmt = connection.prepareStatement(query);
+				 java.sql.ResultSet rs = pstmt.executeQuery()) {
+				while (rs.next()) {
+					String username = rs.getString("userName");
+					boolean adminRole = rs.getBoolean("adminRole");
+					boolean newRole1 = rs.getBoolean("newRole1");
+					boolean newRole2 = rs.getBoolean("newRole2");
+					String roleStr = (adminRole ? "Admin " : "") + (newRole1 ? "Staff " : "") + (newRole2 ? "Student " : "");
+					if (roleStr.isEmpty()) roleStr = "None";
+					userList.add(username + " - Roles: " + roleStr.trim());
+				}
+			} catch (java.sql.SQLException e) { e.printStackTrace(); }
+			return userList;
+		}
+
+		/**
+		 * Generates a random One-Time Password (OTP) for the user.
+		 *
+		 * @param roles the roles associated with the OTP (currently unused in generation logic)
+		 * @param durationMinutes the duration the OTP is valid for (currently unused in generation logic)
+		 * @return the randomly generated 6-character OTP string
+		 */
+		public String generateOTP(String roles, long durationMinutes) {
+			String p = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+			StringBuilder tempPwd = new StringBuilder();
+			for (int i = 0; i < 6; i++) {
+				tempPwd.append(p.charAt((int) (Math.random() * p.length())));
+			}
+			return tempPwd.toString();
+		}
+		
+		/**
+		 * Deletes a grade associated with a specific reply.
+		 *
+		 * @param replyId the ID of the reply whose grade should be deleted
+		 */
+		public void deleteGrade(int replyId) {
+		    // Replace "Grades" and "replyId" with your actual table and column names if they are different
+		    String query = "DELETE FROM Grades WHERE replyId = " + replyId;
+		    try {
+		        java.sql.Statement stmt = connection.createStatement();
+		        stmt.executeUpdate(query);
+		    } catch (Exception e) {
+		        e.printStackTrace();
+		    }
+		}
+	}

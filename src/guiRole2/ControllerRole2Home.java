@@ -50,11 +50,42 @@ public class ControllerRole2Home {
 				if (!isRead) unreadCount++;
 			}
 
-			postManager.filterPosts(currentFilterKeyword, currentFilterType.isEmpty() ? null : currentFilterType, filterMyPosts, filterUnread, userName);
+			//Disable basic filter to use advanced search
+			postManager.filterPosts("", currentFilterType.isEmpty() ? null : currentFilterType, filterMyPosts, filterUnread, userName);
 
 			for (entityClasses.Post post : postManager.getFilteredSubset()) {
+				//Load replies for the post
 				replyManager.loadRepliesForPost(post.getId(), post.getType());
 				java.util.List<entityClasses.Reply> activeReplies = replyManager.getActiveSubset();
+
+				boolean matchFound = false;
+				//Determine if search is active
+				boolean searchActive = (currentFilterKeyword != null && !currentFilterKeyword.trim().isEmpty());
+
+				//Check if keyword is empty
+				if (!searchActive) {
+					matchFound = true;
+				} else {
+					// Convert to lowercase and remove accidental spaces at the very end
+					String kw = currentFilterKeyword.toLowerCase().trim();
+					
+					//Check title and topic using indexOf to guarantee exact character sequence match
+					if (post.getTitle().toLowerCase().indexOf(kw) != -1 || 
+					    post.getTopic().toLowerCase().indexOf(kw) != -1) {
+						matchFound = true;
+					} else {
+						//Check all replies for the exact character sequence
+						for (entityClasses.Reply r : activeReplies) {
+							if (r.getContent().toLowerCase().indexOf(kw) != -1) {
+								matchFound = true;
+								break;
+							}
+						}
+					}
+				}
+
+				//Skip if no match
+				if (!matchFound) continue;
 
 				if (post.getTitle().equals("[Deleted]") && activeReplies.isEmpty()) {
 					postManager.deletePost(post.getId(), post.getType());
@@ -63,16 +94,22 @@ public class ControllerRole2Home {
 
 				boolean isRead = theDatabase.hasReadPost(userName, post.getId(), post.getType());
 				
-				// Fix 1: Correctly apply prefix so click logic maps nicely
+				//Set prefix type
 				String prefixType = post.getType().equals("Discussion") ? "Thread" : "Question";
 				String display = "[" + prefixType + "-" + post.getId() + "] " + (!isRead ? "(UNREAD) " : "") + post.getTitle();
 				
 				javafx.scene.control.TreeItem<String> node = new javafx.scene.control.TreeItem<>(display);
 				
+				//Expand node if search is active
+				if (searchActive) {
+					node.setExpanded(true);
+				}
+				
 				java.util.Map<Integer, javafx.scene.control.TreeItem<String>> rNodes = new java.util.HashMap<>();
 				int postCounter = 1;
 				java.util.Map<Integer, Integer> replyCounters = new java.util.HashMap<>();
 				
+				//Map replies
 				for (entityClasses.Reply r : activeReplies) {
 					String prefix;
 					String localLabel;
@@ -85,13 +122,22 @@ public class ControllerRole2Home {
 						localLabel = "Reply " + c;
 						replyCounters.put(r.getParentId(), c + 1);
 					}
-					rNodes.put(r.getId(), new javafx.scene.control.TreeItem<>(prefix + " " + localLabel + ": " + r.getContent() + " (" + r.getAuthor() + ")"));
+					
+					javafx.scene.control.TreeItem<String> replyNode = new javafx.scene.control.TreeItem<>(prefix + " " + localLabel + ": " + r.getContent() + " (" + r.getAuthor() + ")");
+					
+					//Expand reply node if search is active
+					if (searchActive) {
+						replyNode.setExpanded(true);
+					}
+					
+					rNodes.put(r.getId(), replyNode);
 				}
 				for (entityClasses.Reply r : activeReplies) {
 					if (r.getParentId() == 0) node.getChildren().add(rNodes.get(r.getId()));
 					else if (rNodes.containsKey(r.getParentId())) rNodes.get(r.getParentId()).getChildren().add(rNodes.get(r.getId()));
 				}
 
+				//Add root node
 				if (post.getType().equals("Discussion")) {
 					discussionsRoot.getChildren().add(node);
 				} else {
@@ -148,6 +194,13 @@ public class ControllerRole2Home {
 			lblCreator.setTextFill(javafx.scene.paint.Color.web("#6b7280"));
 			
 			headerLayout.getChildren().addAll(lblTitle, lblCreator);
+
+			if (post.getAuthor().equalsIgnoreCase(currentUser) && !post.getTopic().equals("[This post was deleted.]")) {
+				javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
+				btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5;");
+				btnEdit.setOnAction(e -> showEditThreadDialog(id, type, post.getTitle(), post.getTopic(), container));
+				headerLayout.getChildren().add(btnEdit);
+			}
 			
 			javafx.scene.control.Label lblTopic = new javafx.scene.control.Label(post.getTopic());
 			lblTopic.setFont(javafx.scene.text.Font.font("Arial", 16));
@@ -186,10 +239,17 @@ public class ControllerRole2Home {
 				boolean isMyReply = r.getAuthor().equalsIgnoreCase(currentUser);
 				
 				if (isMyReply && !r.getContent().equals("[This post was deleted.]")) {
+
+					javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
+					btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 2 6; -fx-background-radius: 5; -fx-font-size: 11px;");
+					btnEdit.setOnAction(e -> showEditReplyDialog(r.getId(), type, r.getContent(), id, container));
+					rHeaderLayout.getChildren().add(btnEdit);
+
 					javafx.scene.control.Button btnDelete = new javafx.scene.control.Button("Delete");
 					btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 2 6; -fx-background-radius: 5; -fx-font-size: 11px;");
 					btnDelete.setOnAction(e -> {
 						javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this reply?", javafx.scene.control.ButtonType.YES, javafx.scene.control.ButtonType.NO);
+						alert.initOwner(ViewRole2Home.theStage);
 						alert.showAndWait().ifPresent(response -> {
 							if (response == javafx.scene.control.ButtonType.YES) {
 								try {
@@ -225,11 +285,11 @@ public class ControllerRole2Home {
 						String[] pts = gradeData.split("\\|");
 						int total = Integer.parseInt(pts[0]) + Integer.parseInt(pts[1]) + Integer.parseInt(pts[2]);
 						lblGrade.setText("Grade: " + total + "/30");
-						gradeBox.setStyle(gradeBox.getStyle() + "-fx-background-color: #d1fae5;"); // Green
+						gradeBox.setStyle(gradeBox.getStyle() + "-fx-background-color: #d1fae5;");
 						lblGrade.setTextFill(javafx.scene.paint.Color.web("#065f46"));
 					} else {
 						lblGrade.setText("Grade: N/A");
-						gradeBox.setStyle(gradeBox.getStyle() + "-fx-background-color: #f3f4f6;"); // Gray
+						gradeBox.setStyle(gradeBox.getStyle() + "-fx-background-color: #f3f4f6;");
 						lblGrade.setTextFill(javafx.scene.paint.Color.web("#374151"));
 					}
 					
@@ -242,12 +302,53 @@ public class ControllerRole2Home {
 		} catch (Exception e) { e.printStackTrace(); }
 	}
 
+	protected static void showEditThreadDialog(int id, String type, String oldTitle, String oldTopic, javafx.scene.layout.VBox container) {
+		javafx.scene.control.Dialog<String[]> dialog = new javafx.scene.control.Dialog<>();
+		dialog.initOwner(ViewRole2Home.theStage);
+		dialog.setTitle("Edit " + type);
+		javafx.scene.control.ButtonType saveBtnType = new javafx.scene.control.ButtonType("Save", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
+		dialog.getDialogPane().getButtonTypes().addAll(saveBtnType, javafx.scene.control.ButtonType.CANCEL);
+
+		javafx.scene.layout.VBox vBox = new javafx.scene.layout.VBox(10);
+		javafx.scene.control.TextField titleF = new javafx.scene.control.TextField(oldTitle);
+		javafx.scene.control.TextArea topicF = new javafx.scene.control.TextArea(oldTopic);
+		topicF.setPrefRowCount(3);
+		vBox.getChildren().addAll(new javafx.scene.control.Label("Title:"), titleF, new javafx.scene.control.Label("Content:"), topicF);
+		dialog.getDialogPane().setContent(vBox);
+
+		dialog.setResultConverter(btn -> {
+			if (btn == saveBtnType) return new String[]{titleF.getText(), topicF.getText()};
+			return null;
+		});
+
+		dialog.showAndWait().ifPresent(res -> {
+			try {
+				managers.PostCollection postManager = new managers.PostCollection(theDatabase);
+				postManager.updatePost(id, type, res[0], res[1]);
+			} catch (Exception e) { e.printStackTrace(); }
+			refreshDiscussionTree(ViewRole2Home.tree_Discussions, ViewRole2Home.theUser.getUserName(), ViewRole2Home.button_FilterMyPosts, ViewRole2Home.button_FilterUnread);
+			renderPostView(id, type, container);
+		});
+	}
+
+	protected static void showEditReplyDialog(int rId, String type, String oldContent, int threadId, javafx.scene.layout.VBox container) {
+		javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog(oldContent);
+		dialog.initOwner(ViewRole2Home.theStage);
+		dialog.setTitle("Edit Reply");
+		dialog.setHeaderText("Update your reply:");
+		dialog.showAndWait().ifPresent(newContent -> {
+			managers.ReplyCollection replyManager = new managers.ReplyCollection(theDatabase);
+			replyManager.updateReply(rId, type, newContent, threadId);
+			refreshDiscussionTree(ViewRole2Home.tree_Discussions, ViewRole2Home.theUser.getUserName(), ViewRole2Home.button_FilterMyPosts, ViewRole2Home.button_FilterUnread);
+			renderPostView(threadId, type, container);
+		});
+	}
+
 	protected static void executeReplyDB(int id, int parentReplyId, String type, String content, String userName, javafx.scene.control.TreeView<String> tree, javafx.scene.layout.VBox container, javafx.scene.control.Button b1, javafx.scene.control.Button b2) {
 		try {
 			managers.ReplyCollection replyManager = new managers.ReplyCollection(theDatabase);
 			replyManager.createReply(id, parentReplyId, type, content, userName);
 			
-			// Auto read after replying
             try { theDatabase.markPostAsRead(userName, id, type); } catch(Exception e){}
 			refreshDiscussionTree(tree, userName, b1, b2);
 			renderPostView(id, type, container);
@@ -259,7 +360,6 @@ public class ControllerRole2Home {
 			managers.PostCollection postManager = new managers.PostCollection(theDatabase);
 			postManager.createPost("Question", title, topic, userName);
 			
-			// Auto mark created question as read
             postManager.loadAllPosts();
             int maxId = -1;
             for(entityClasses.Post p : postManager.getAllPosts()) {

@@ -157,11 +157,42 @@ public class ControllerRole1Home {
 				if (!isRead) unreadCount++;
 			}
 
-			postManager.filterPosts(currentFilterKeyword, currentFilterType.isEmpty() ? null : currentFilterType, filterMyPosts, filterUnread, userName);
+			//Disable basic filter to use advanced search
+			postManager.filterPosts("", currentFilterType.isEmpty() ? null : currentFilterType, filterMyPosts, filterUnread, userName);
 
 			for (entityClasses.Post post : postManager.getFilteredSubset()) {
+				//Load replies for the post
 				replyManager.loadRepliesForPost(post.getId(), post.getType());
 				java.util.List<entityClasses.Reply> activeReplies = replyManager.getActiveSubset();
+
+				boolean matchFound = false;
+				//Determine if search is active
+				boolean searchActive = (currentFilterKeyword != null && !currentFilterKeyword.trim().isEmpty());
+
+				//Check if keyword is empty
+				if (!searchActive) {
+					matchFound = true;
+				} else {
+					// Convert to lowercase and remove accidental spaces at the very end
+					String kw = currentFilterKeyword.toLowerCase().trim();
+					
+					//Check title and topic using indexOf to guarantee exact character sequence match
+					if (post.getTitle().toLowerCase().indexOf(kw) != -1 || 
+					    post.getTopic().toLowerCase().indexOf(kw) != -1) {
+						matchFound = true;
+					} else {
+						//Check all replies for the exact character sequence
+						for (entityClasses.Reply r : activeReplies) {
+							if (r.getContent().toLowerCase().indexOf(kw) != -1) {
+								matchFound = true;
+								break;
+							}
+						}
+					}
+				}
+
+				//Skip if no match
+				if (!matchFound) continue;
 
 				if (post.getTitle().equals("[Deleted]") && activeReplies.isEmpty()) {
 					postManager.deletePost(post.getId(), post.getType());
@@ -170,16 +201,22 @@ public class ControllerRole1Home {
 
 				boolean isRead = theDatabase.hasReadPost(userName, post.getId(), post.getType());
 				
-				// Fix 1: Properly prefix the Thread/Question identifier for the View logic
+				//Set prefix type
 				String prefixType = post.getType().equals("Discussion") ? "Thread" : "Question";
 				String display = "[" + prefixType + "-" + post.getId() + "] " + (!isRead ? "(UNREAD) " : "") + post.getTitle();
 				
 				javafx.scene.control.TreeItem<String> node = new javafx.scene.control.TreeItem<>(display);
 				
+				//Expand node if search is active
+				if (searchActive) {
+					node.setExpanded(true);
+				}
+				
 				java.util.Map<Integer, javafx.scene.control.TreeItem<String>> rNodes = new java.util.HashMap<>();
 				int postCounter = 1;
 				java.util.Map<Integer, Integer> replyCounters = new java.util.HashMap<>();
 				
+				//Map replies
 				for (entityClasses.Reply r : activeReplies) {
 					String prefix; String localLabel;
 					if (r.getParentId() == 0) {
@@ -191,13 +228,22 @@ public class ControllerRole1Home {
 						localLabel = "Reply " + c;
 						replyCounters.put(r.getParentId(), c + 1);
 					}
-					rNodes.put(r.getId(), new javafx.scene.control.TreeItem<>(prefix + " " + localLabel + ": " + r.getContent() + " (" + r.getAuthor() + ")"));
+					
+					javafx.scene.control.TreeItem<String> replyNode = new javafx.scene.control.TreeItem<>(prefix + " " + localLabel + ": " + r.getContent() + " (" + r.getAuthor() + ")");
+					
+					//Expand reply node if search is active
+					if (searchActive) {
+						replyNode.setExpanded(true);
+					}
+					
+					rNodes.put(r.getId(), replyNode);
 				}
 				for (entityClasses.Reply r : activeReplies) {
 					if (r.getParentId() == 0) node.getChildren().add(rNodes.get(r.getId()));
 					else if (rNodes.containsKey(r.getParentId())) rNodes.get(r.getParentId()).getChildren().add(rNodes.get(r.getId()));
 				}
 
+				//Add root node
 				if (post.getType().equals("Discussion")) {
 					discussionsRoot.getChildren().add(node);
 				} else {
@@ -260,7 +306,6 @@ public class ControllerRole1Home {
 			boolean threadIsStudent = students.contains(post.getAuthor());
 			
 			if (!post.getTopic().equals("[This post was deleted.]")) {
-				// Keep Edit restricted to the owner or student
 				if (threadOwner || threadIsStudent) {
 					javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
 					btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5;");
@@ -268,11 +313,11 @@ public class ControllerRole1Home {
 					headerLayout.getChildren().add(btnEdit);
 				}
 				
-				// Allow Delete for ALL accounts
 				javafx.scene.control.Button btnDelete = new javafx.scene.control.Button("Delete Thread");
 				btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5;");
 				btnDelete.setOnAction(e -> {
 					javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.CONFIRMATION, "Delete this entire thread and all replies?", javafx.scene.control.ButtonType.YES, javafx.scene.control.ButtonType.NO);
+					alert.initOwner(ViewRole1Home.theStage);
 					alert.showAndWait().ifPresent(res -> {
 						if (res == javafx.scene.control.ButtonType.YES) {
 							try {
@@ -324,7 +369,6 @@ public class ControllerRole1Home {
 				}
 				
 				if (!r.getContent().equals("[This post was deleted.]")) {
-					// Keep Edit restricted to the owner or student
 					if (replyOwner || replyIsStudent) {
 						javafx.scene.control.Button btnEdit = new javafx.scene.control.Button("Edit");
 						btnEdit.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5; -fx-font-size: 11px;");
@@ -332,21 +376,18 @@ public class ControllerRole1Home {
 						actionBox.getChildren().add(btnEdit);
 					}
 					
-					// Allow Delete for ALL accounts
 					javafx.scene.control.Button btnDelete = new javafx.scene.control.Button("Delete");
 					btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-padding: 3 8; -fx-background-radius: 5; -fx-font-size: 11px;");
 					btnDelete.setOnAction(e -> {
 						javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.CONFIRMATION, "Delete this reply?", javafx.scene.control.ButtonType.YES, javafx.scene.control.ButtonType.NO);
+						alert.initOwner(ViewRole1Home.theStage);
 						alert.showAndWait().ifPresent(res -> {
 							if (res == javafx.scene.control.ButtonType.YES) {
 								try {
 									replyManager.deleteReply(r.getId(), type, id);
-									// Try to delete the grade associated with this reply from the database
 									try {
 										theDatabase.deleteGrade(r.getId());
-									} catch (Exception ex) { 
-										// Ignore if grade doesn't exist
-									}
+									} catch (Exception ex) {}
 								} catch (Exception ex) { ex.printStackTrace(); }
 								refreshDiscussionTree(ViewRole1Home.tree_Discussions, currentUser, ViewRole1Home.button_FilterMyPosts, ViewRole1Home.button_FilterUnread);
 								renderPostView(id, type, container);
@@ -373,15 +414,11 @@ public class ControllerRole1Home {
 				replyBox.getChildren().addAll(rHeaderLayout, rLblContent);
 
 				if (type.equals("Discussion")) {
-					// If the post is already marked as deleted, actively remove its grade from the database
 					if (r.getContent().equals("[This post was deleted.]")) {
 						try {
 							theDatabase.deleteGrade(r.getId());
-						} catch (Exception ex) {
-							// Ignore if no grade exists to delete
-						}
+						} catch (Exception ex) {}
 					} else {
-						// Only fetch and display the grade if the post is NOT deleted
 						String gradeData = theDatabase.getGrade(r.getId());
 						if (gradeData != null) {
 							javafx.scene.layout.HBox gradeBox = new javafx.scene.layout.HBox();
@@ -406,6 +443,7 @@ public class ControllerRole1Home {
 
 	protected static void showEditThreadDialog(int id, String type, String oldTitle, String oldTopic, javafx.scene.layout.VBox container) {
 		javafx.scene.control.Dialog<String[]> dialog = new javafx.scene.control.Dialog<>();
+		dialog.initOwner(ViewRole1Home.theStage);
 		dialog.setTitle("Edit " + type);
 		javafx.scene.control.ButtonType saveBtnType = new javafx.scene.control.ButtonType("Save", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
 		dialog.getDialogPane().getButtonTypes().addAll(saveBtnType, javafx.scene.control.ButtonType.CANCEL);
@@ -434,6 +472,7 @@ public class ControllerRole1Home {
 
 	protected static void showEditReplyDialog(int rId, String type, String oldContent, int threadId, javafx.scene.layout.VBox container) {
 		javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog(oldContent);
+		dialog.initOwner(ViewRole1Home.theStage);
 		dialog.setTitle("Edit Reply");
 		dialog.setHeaderText("Update your reply:");
 		dialog.showAndWait().ifPresent(newContent -> {
@@ -447,6 +486,7 @@ public class ControllerRole1Home {
 	protected static void showGradingDialog(int replyId, int threadId, String type, javafx.scene.layout.VBox container) {
 	    try {
 	        javafx.scene.control.Dialog<int[]> dialog = new javafx.scene.control.Dialog<>();
+	        dialog.initOwner(ViewRole1Home.theStage);
 	        dialog.setTitle("Grade Student Post");
 	        dialog.setHeaderText("Enter scores for the three criteria (0-10 each)");
 
@@ -481,7 +521,6 @@ public class ControllerRole1Home {
 		try {
 			managers.ReplyCollection replyManager = new managers.ReplyCollection(theDatabase);
 			replyManager.createReply(id, parentReplyId, type, content, userName);
-			// Auto read after replying
             try { theDatabase.markPostAsRead(userName, id, type); } catch(Exception e){}
 			refreshDiscussionTree(tree, userName, b1, b2);
 			renderPostView(id, type, container);
@@ -493,7 +532,6 @@ public class ControllerRole1Home {
 			managers.PostCollection postManager = new managers.PostCollection(theDatabase);
 			postManager.createPost("Discussion", title, topic, userName);
 			
-			// Auto mark created thread as read
             postManager.loadAllPosts();
             int maxId = -1;
             for(entityClasses.Post p : postManager.getAllPosts()) {
@@ -514,7 +552,6 @@ public class ControllerRole1Home {
 			managers.PostCollection postManager = new managers.PostCollection(theDatabase);
 			postManager.createPost("Question", title, topic, userName);
 			
-			// Auto mark created question as read
             postManager.loadAllPosts();
             int maxId = -1;
             for(entityClasses.Post p : postManager.getAllPosts()) {

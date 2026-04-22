@@ -209,7 +209,8 @@ public class ViewRole1Home {
 		input_Filter.setLayoutX(240);
 		input_Filter.setLayoutY(145);
 		input_Filter.setPrefWidth(130);
-		input_Filter.setVisible(false);
+		input_Filter.setPromptText("Search keywords...");
+		input_Filter.setVisible(true);
 		input_Filter.textProperty().addListener((obs, oldVal, newVal) -> {
 			ControllerRole1Home.currentFilterKeyword = newVal;
 			ControllerRole1Home.refreshDiscussionTree(tree_Discussions, theUser.getUserName(), button_FilterMyPosts, button_FilterUnread);
@@ -282,14 +283,11 @@ public class ViewRole1Home {
 		    tree_Discussions.setVisible(true);
 		    button_FilterMyPosts.setVisible(true);
 		    button_FilterUnread.setVisible(true);
+		    input_Filter.setVisible(true);
 		    input_NewTitle.setVisible(true);
 		    input_NewTopic.setVisible(true);
 		    button_CreateThread.setVisible(true);
 		    button_CreateQuestion.setVisible(true);
-		    
-		    String val = "";
-		    if(tree_Discussions.getSelectionModel().getSelectedItem() != null) val = tree_Discussions.getSelectionModel().getSelectedItem().getValue();
-		    if (val.equals("Discussions") || val.equals("Questions")) input_Filter.setVisible(true);
 		    
 		    box_ThreadDetails.getChildren().clear();
 		    input_ReplyBox.setVisible(true);
@@ -391,12 +389,9 @@ public class ViewRole1Home {
 				}
 
 				if (val.equals("Discussions") || val.equals("Questions")) {
-					input_Filter.setVisible(true);
-					input_Filter.setPromptText("Filter " + val);
 					ControllerRole1Home.currentFilterType = val.equals("Discussions") ? "Discussion" : "Question";
-				} else {
-					input_Filter.setVisible(false);
-				}
+					box_ThreadDetails.getChildren().clear();
+				} 
 				
 				input_ReplyBox.setVisible(true);
 				button_SubmitReply.setVisible(true);
@@ -422,7 +417,7 @@ public class ViewRole1Home {
 
 		// Buttons
 		button_CreateThread.setOnAction((_) -> {
-			String title = input_NewTitle.getText().isEmpty() ? "General" : input_NewTitle.getText();
+			String title = input_NewTitle.getText().isEmpty() ? "No Title" : input_NewTitle.getText();
 			if (!input_NewTopic.getText().isEmpty()) {
 				ControllerRole1Home.createNewThread(title, input_NewTopic.getText(), theUser.getUserName(), tree_Discussions, button_FilterMyPosts, button_FilterUnread);
 				input_NewTitle.clear();
@@ -431,7 +426,7 @@ public class ViewRole1Home {
 		});
 
 		button_CreateQuestion.setOnAction((_) -> {
-			String title = input_NewTitle.getText().isEmpty() ? "General" : input_NewTitle.getText();
+			String title = input_NewTitle.getText().isEmpty() ? "No Title" : input_NewTitle.getText();
 			if (!input_NewTopic.getText().isEmpty()) {
 				ControllerRole1Home.createNewQuestion(title, input_NewTopic.getText(), theUser.getUserName(), tree_Discussions, button_FilterMyPosts, button_FilterUnread);
 				input_NewTitle.clear();

@@ -202,7 +202,8 @@ public class ViewRole2Home {
 		input_Filter.setLayoutX(240);
 		input_Filter.setLayoutY(145);
 		input_Filter.setPrefWidth(130);
-		input_Filter.setVisible(false);
+		input_Filter.setPromptText("Search keywords...");
+		input_Filter.setVisible(true); // Always visible alongside buttons in discussion view
 		input_Filter.textProperty().addListener((obs, oldVal, newVal) -> {
 			ControllerRole2Home.currentFilterKeyword = newVal;
 			ControllerRole2Home.refreshDiscussionTree(tree_Discussions, theUser.getUserName(), button_FilterMyPosts, button_FilterUnread);
@@ -258,13 +259,10 @@ public class ViewRole2Home {
 		    tree_Discussions.setVisible(true);
 		    button_FilterMyPosts.setVisible(true);
 		    button_FilterUnread.setVisible(true);
+		    input_Filter.setVisible(true);
 		    input_NewTitle.setVisible(true);
 		    input_NewTopic.setVisible(true);
 		    button_CreateQuestion.setVisible(true);
-		    
-		    String val = "";
-		    if(tree_Discussions.getSelectionModel().getSelectedItem() != null) val = tree_Discussions.getSelectionModel().getSelectedItem().getValue();
-		    if (val.equals("Discussions") || val.equals("Questions")) input_Filter.setVisible(true);
 		    
 		    box_ThreadDetails.getChildren().clear();
 		    input_ReplyBox.setVisible(true);
@@ -324,12 +322,8 @@ public class ViewRole2Home {
 				}
 
 				if (val.equals("Discussions") || val.equals("Questions")) {
-					input_Filter.setVisible(true);
-					input_Filter.setPromptText("Filter " + val);
 					ControllerRole2Home.currentFilterType = val.equals("Discussions") ? "Discussion" : "Question";
 					box_ThreadDetails.getChildren().clear(); // SECURE: Ensure it clears if clicking a root node
-				} else {
-					input_Filter.setVisible(false);
 				}
 				
 				input_ReplyBox.setVisible(true);
@@ -353,7 +347,8 @@ public class ViewRole2Home {
 		// Buttons
 
 		button_CreateQuestion.setOnAction((_) -> {
-			String title = input_NewTitle.getText().isEmpty() ? "General" : input_NewTitle.getText();
+			// Change default title empty logic to "No Title" instead of General
+			String title = input_NewTitle.getText().isEmpty() ? "No Title" : input_NewTitle.getText();
 			if (!input_NewTopic.getText().isEmpty()) {
 				ControllerRole2Home.createNewQuestion(title, input_NewTopic.getText(), theUser.getUserName(), tree_Discussions, button_FilterMyPosts, button_FilterUnread);
 				input_NewTitle.clear();
