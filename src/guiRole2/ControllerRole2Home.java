@@ -24,6 +24,9 @@ public class ControllerRole2Home {
 	protected static String currentFilterKeyword = "";
 	protected static String currentFilterType = "";
 
+	/**
+	 * ControllerRole2Home
+	 */
 	public ControllerRole2Home() {
 	}
 	

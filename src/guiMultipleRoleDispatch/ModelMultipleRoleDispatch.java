@@ -17,4 +17,8 @@ package guiMultipleRoleDispatch;
 
 public class ModelMultipleRoleDispatch {
 
+	/**
+	 * Constructor for ModelMultipleRoleDispatch class
+	 */
+	public ModelMultipleRoleDispatch() {}
 }

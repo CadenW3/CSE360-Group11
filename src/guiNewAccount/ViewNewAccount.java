@@ -64,7 +64,8 @@ public class ViewNewAccount {
     protected static String theInvitationCode;	
     protected static String emailAddress;		
     protected static String theRole;			
-	public static Scene theNewAccountScene = null;	
+    /** The Scene each invocation populates */
+	public static Scene theNewAccountScene = null;
 	
 
 	/*-********************************************************************************************
@@ -73,6 +74,11 @@ public class ViewNewAccount {
 	
 	*/
 
+	/**
+	 * Displays the New Account page and initializes the UI.
+	 * @param ps The JavaFX Stage to be used for this GUI.
+	 * @param ic The invitation code entered by the user.
+	 */
 	public static void displayNewAccount(Stage ps, String ic) {
 		ControllerNewAccount.setDatabase(theDatabase);
 		theStage = ps;				

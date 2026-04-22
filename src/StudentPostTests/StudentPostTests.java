@@ -45,6 +45,12 @@ import java.util.List;
  */
 public class StudentPostTests {
 
+    /**
+     * Constructor for StudentPostTests.
+     */
+    public StudentPostTests() {
+    }
+
     static int passed = 0;
     static int total = 0;
 

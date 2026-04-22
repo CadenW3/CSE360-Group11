@@ -123,8 +123,8 @@ public class ViewRole1Home {
 	 * * After the instantiation, the code then populates the elements that change based on the user
 	 * and the system's current state.  It then sets the Scene onto the stage, and makes it visible
 	 * to the user.
-	 * * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
-	 * * @param user specifies the User for this GUI and it's methods
+	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
+	 * @param user specifies the User for this GUI and it's methods
 	 * */
 	public static void displayRole1Home(Stage ps, User user) {
 		

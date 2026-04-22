@@ -5,18 +5,30 @@ import entityClasses.Reply;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Collection manager for Reply entities.
+ * Handles loading, cleaning orphaned replies, creating, updating, and deleting replies.
+ */
 public class ReplyCollection {
     private Database db;
     private List<Reply> allReplies;
     private List<Reply> activeSubset;
 
+    /**
+     * Constructor for ReplyCollection.
+     * @param db The database instance used to interact with data.
+     */
     public ReplyCollection(Database db) {
         this.db = db;
         this.allReplies = new ArrayList<>();
         this.activeSubset = new ArrayList<>();
     }
 
-    // --- READ / LOAD ---
+    /**
+     * Loads all replies for a specific post and processes orphaned deletes.
+     * @param postId The unique identifier of the parent post.
+     * @param type The type of post ("Discussion" or "Question").
+     */
     public void loadRepliesForPost(int postId, String type) {
         allReplies.clear();
         List<String> rawReplies = type.equals("Discussion") ? 
@@ -68,9 +80,20 @@ public class ReplyCollection {
         this.activeSubset = currentList;
     }
 
+    /**
+     * Gets the active subset of replies (excluding orphaned soft-deleted replies).
+     * @return The list of active replies.
+     */
     public List<Reply> getActiveSubset() { return activeSubset; }
 
-    // --- CREATE ---
+    /**
+     * Creates a new reply in the database and refreshes the collection.
+     * @param postId The ID of the main post.
+     * @param parentId The ID of the parent reply (0 if replying to the main post).
+     * @param type The type of post ("Discussion" or "Question").
+     * @param content The text content of the reply.
+     * @param author The username of the author.
+     */
     public void createReply(int postId, int parentId, String type, String content, String author) {
         try {
             if (type.equals("Discussion")) db.createReply(postId, parentId, content, author);
@@ -79,7 +102,13 @@ public class ReplyCollection {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    // --- UPDATE --- 
+    /**
+     * Updates an existing reply in the database and refreshes the collection.
+     * @param replyId The unique identifier of the reply.
+     * @param type The type of post ("Discussion" or "Question").
+     * @param newContent The new content for the reply.
+     * @param postId The ID of the main post to refresh the list.
+     */
     public void updateReply(int replyId, String type, String newContent, int postId) {
         try {
             if (type.equals("Discussion")) db.updateReply(replyId, newContent);
@@ -88,7 +117,12 @@ public class ReplyCollection {
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    // --- DELETE (Soft or Hard) ---
+    /**
+     * Deletes a reply (soft delete if it has children, hard delete otherwise) and refreshes the collection.
+     * @param replyId The unique identifier of the reply to delete.
+     * @param type The type of post ("Discussion" or "Question").
+     * @param postId The ID of the main post to refresh the list.
+     */
     public void deleteReply(int replyId, String type, int postId) {
         try {
             boolean hasChildren = false;

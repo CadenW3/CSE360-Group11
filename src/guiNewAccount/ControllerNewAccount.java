@@ -17,14 +17,24 @@ public class ControllerNewAccount {
 
 	private static Database theDatabase;
 
+	/**
+	 * Constructor for ControllerNewAccount.
+	 */
 	public ControllerNewAccount() {
 	}
-
+	
+	/**
+	 * Sets the database instance for this controller.
+	 * @param db The Database object to be used.
+	 */
 	public static void setDatabase(Database db) {
 		theDatabase = db;
 	}
 
-	//Real-time Password checker
+	/**
+	 * Real-time Password checker that updates the UI based on password strength.
+	 * @param password The password string being evaluated.
+	 */
 	public static void checkPasswordStrengthRealTime(String password) {
 		String result = checkPassword(password);
 		

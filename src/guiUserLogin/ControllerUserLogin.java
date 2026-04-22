@@ -46,7 +46,7 @@ public class ControllerUserLogin {
 	 * <p> Method: setDatabase(Database db) </p>
 	 * * <p> Description: This method is used to pass the database object to this controller so it
 	 * can be used to access the database.</p>
-	 * * @param db	The Database object
+	 * @param db	The Database object
 	 */
 	public static void setDatabase(Database db) {
 		theDatabase = db;

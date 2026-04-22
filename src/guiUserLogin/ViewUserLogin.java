@@ -62,6 +62,7 @@ public class ViewUserLogin {
 
 	private static Stage theStage;	
 	private static Pane theRootPane;
+	/** The Scene each invocation populates */
 	public static Scene theUserLoginScene = null;	
 
 
@@ -76,6 +77,10 @@ public class ViewUserLogin {
 
 	 *********************************************************************************************/
 
+	/**
+	 * Displays the User Login page and initializes the UI.
+	 * @param ps The JavaFX Stage to be used for this GUI.
+	 */
 	public static void displayUserLogin(Stage ps) {
 		
 		// Establish the references to the GUI. There is no current user yet.

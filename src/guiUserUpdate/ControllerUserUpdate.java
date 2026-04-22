@@ -9,7 +9,17 @@ import javafx.stage.Stage;
 import java.util.Optional;
 import database.Database;
 
+/**
+ * ControllerUserUpadate
+ */
 public class ControllerUserUpdate {
+
+	/**
+	 * Constructor for ControllerUserUpdate.
+	 */
+	public ControllerUserUpdate() {
+	}
+
 	/*-********************************************************************************************
 
 	The Controller for ViewUserUpdate  

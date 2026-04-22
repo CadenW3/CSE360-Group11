@@ -53,15 +53,46 @@ public class Post {
         this.author = author;
     }
 
-    // getters - used by the GUI tree view, detail panel, and filter logic
+    /**
+     * Gets the unique database ID of the post.
+     * @return The integer ID.
+     */
     public int getId()        { return id; }
+
+    /**
+     * Gets the type of the post ("Discussion" or "Question").
+     * @return The type of the post.
+     */
     public String getType()   { return type; }
+
+    /**
+     * Gets the title or short headline of the post.
+     * @return The post title.
+     */
     public String getTitle()  { return title; }
+
+    /**
+     * Gets the full body content of the post.
+     * @return The post topic/content.
+     */
     public String getTopic()  { return topic; }
+
+    /**
+     * Gets the username of the post's author.
+     * @return The author's username.
+     */
     public String getAuthor() { return author; }
 
-    // setters - called when a student or staff member edits a post
+    /**
+     * Sets a new title for the post.
+     * @param title The new title to set.
+     */
     public void setTitle(String title) { this.title = title; }
+
+    /**
+     * Sets new body content for the post.
+     * @param topic The new topic content to set.
+     */
     public void setTopic(String topic) { this.topic = topic; }
 
     /**

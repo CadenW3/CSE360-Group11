@@ -17,4 +17,8 @@ package guiAdminHome;
 
 public class ModelAdminHome {
 
+	/**
+	 * Constructor For ModelAdminHome
+	 */
+	public ModelAdminHome() {}
 }

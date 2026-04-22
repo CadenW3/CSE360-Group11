@@ -1,7 +1,5 @@
 package guiRole1;
 
-public class ModelRole1Home {
-
 /*******
  * <p> Title: ModelRole1Home Class. </p>
  * 
@@ -17,5 +15,10 @@ public class ModelRole1Home {
  * @version 1.01		2025-09-13 Updated JavaDoc description
  *  
  */
-
+public class ModelRole1Home {
+	
+	/**
+	 * Constructor for ModelRole1Home
+	 */
+	public ModelRole1Home() {}
 }

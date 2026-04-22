@@ -23,10 +23,18 @@ public class ControllerAdminHome {
 	
 	private static Database theDatabase = applicationMain.FoundationsMain.database;
 	
+	/**
+	 * Creates the base Controller Admin Home.
+	 */
 	public ControllerAdminHome() {
 	}
 	
 	// --- NEW ADMIN REQUEST FEATURE METHODS ---
+	
+	/**
+	 * Refreshes the tree view displaying open and closed admin requests.
+	 * @param treeView The JavaFX TreeView to populate with request data.
+	 */
 	public static void refreshRequestsTree(javafx.scene.control.TreeView<String> treeView) {
         javafx.scene.control.TreeItem<String> hiddenRoot = new javafx.scene.control.TreeItem<>("Hidden");
         javafx.scene.control.TreeItem<String> openRoot = new javafx.scene.control.TreeItem<>("Open Requests");
@@ -49,7 +57,12 @@ public class ControllerAdminHome {
         treeView.setRoot(hiddenRoot);
         treeView.setShowRoot(false);
     }
-	
+	/**
+	 * Renders the details of a specific admin request into the provided UI container.
+	 * @param reqId     The unique identifier of the admin request.
+	 * @param container The VBox layout container where the details will be displayed.
+	 * @param tree      The TreeView UI component to be refreshed upon updates.
+	 */
 	public static void renderAdminRequestDetails(int reqId, javafx.scene.layout.VBox container, javafx.scene.control.TreeView<String> tree) {
 		container.getChildren().clear();
 		container.setStyle("-fx-padding: 15; -fx-background-color: white;");

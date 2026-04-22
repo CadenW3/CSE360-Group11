@@ -97,7 +97,8 @@ public class ViewAddRemoveRoles {
 	protected static Pane theRootPane;			// The Pane that holds all the GUI widgets 
 	protected static User theUser;				// The current user of the application
 	
-	public static Scene theAddRemoveRolesScene = null;	// The Scene each invocation populates
+	/** The Scene each invocation populates */
+	public static Scene theAddRemoveRolesScene = null;
 	protected static String theSelectedUser = "";	// The user whose roles are being updated
 	protected static String theAddRole = "";		// The role being added
 	protected static String theRemoveRole = "";		// The roles being removed
@@ -154,16 +155,13 @@ public class ViewAddRemoveRoles {
 	}
 
 	
-	/**********
+	/**
 	 * <p> Method: GUIAddRemoveRolesPage() </p>
-	 * 
-	 * <p> Description: This method initializes all the elements of the graphical user interface.
+	 * * <p> Description: This method initializes all the elements of the graphical user interface.
 	 * This method determines the location, size, font, color, and change and event handlers for
 	 * each GUI object. </p>
-	 * 
-	 * This is a singleton, so this is performed just one.  Subsequent uses fill in the changeable
+	 * * <p>This is a singleton, so this is performed just one.  Subsequent uses fill in the changeable
 	 * fields using the displayAddRempoveRoles method.</p>
-	 * 
 	 */
 	public ViewAddRemoveRoles() {
 		

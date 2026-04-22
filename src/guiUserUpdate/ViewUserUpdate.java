@@ -109,7 +109,8 @@ public class ViewUserUpdate {
 	private static Pane theRootPane;			// The Pane that holds all the GUI widgets
 	private static User theUser;				// The current user of the application
 
-	public static Scene theUserUpdateScene = null;	// The Scene each invocation populates
+	/** The Scene each invocation populates */
+	public static Scene theUserUpdateScene = null;
 
 	private static Optional<String> result;		// The result from a pop-up dialog
 	
@@ -132,8 +133,8 @@ public class ViewUserUpdate {
 	 * * After the instantiation, the code then populates the elements that change based on the user
 	 * and the system's current state.  It then sets the Scene onto the stage, and makes it visible
 	 * to the user.
-	 * * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
-	 * * @param user specifies the User whose roles will be updated
+	 * @param ps specifies the JavaFX Stage to be used for this GUI and it's methods
+	 * @param user specifies the User whose roles will be updated
 	 *
 	 */
 	public static void displayUserUpdate(Stage ps, User user) {

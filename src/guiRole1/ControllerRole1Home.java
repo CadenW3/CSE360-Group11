@@ -24,9 +24,18 @@ public class ControllerRole1Home {
 	protected static String currentFilterKeyword = "";
 	protected static String currentFilterType = "";
 
+	/**
+	 * Constructor for ControllerRole1Home.
+	 */
 	public ControllerRole1Home() {
 	}
 	
+	
+	/**
+	 * Refreshes the tree view displaying pending and closed admin requests for the staff member.
+	 * @param treeView The JavaFX TreeView to populate with request data.
+	 * @param username The username of the currently logged-in user.
+	 */
 	public static void refreshRequestsTree(javafx.scene.control.TreeView<String> treeView, String username) {
         javafx.scene.control.TreeItem<String> hiddenRoot = new javafx.scene.control.TreeItem<>("Hidden");
         javafx.scene.control.TreeItem<String> pendingRoot = new javafx.scene.control.TreeItem<>("Pending Requests");
@@ -50,6 +59,12 @@ public class ControllerRole1Home {
         treeView.setShowRoot(false);
     }
 	
+	/**
+	 * Renders the details of a specific staff request into the provided UI container.
+	 * @param reqId     The unique identifier of the request (or -1 to create a new request).
+	 * @param container The VBox layout container where the details will be displayed.
+	 * @param tree      The TreeView UI component to be refreshed upon updates.
+	 */
 	public static void renderStaffRequestDetails(int reqId, javafx.scene.layout.VBox container, javafx.scene.control.TreeView<String> tree) {
 		container.getChildren().clear();
 		container.setStyle("-fx-padding: 15; -fx-background-color: white;");

@@ -84,12 +84,11 @@ public class ViewMultipleRoleDispatch {
 	private static Scene theMultipleRoleDispatchScene = null;	
 
 
-	/*-********************************************************************************************
-
-	Constructor
-
+	/**
+	 * Displays the Multiple Role Dispatch page and initializes the UI for the user.
+	 * @param ps The JavaFX Stage to be used for this GUI.
+	 * @param user The current User of the application.
 	 */
-
 	public static void displayMultipleRoleDispatch(Stage ps, User user) {
 		
 		// Establish the references to the GUI and the current user
